@@ -77,14 +77,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Trivia Night — Daily Quiz" },
+      { name: "description", content: "A fresh 10-question trivia quiz every day. Build your streak across movies, gaming, science, and general knowledge." },
+      { property: "og:title", content: "Trivia Night — Daily Quiz" },
+      { property: "og:description", content: "10 fresh trivia questions daily. Build your streak." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
