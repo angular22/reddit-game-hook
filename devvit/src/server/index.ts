@@ -2,15 +2,15 @@ import { context, reddit, settings } from '@devvit/web/server';
 import { createServer } from '@devvit/web/server';
 import { Devvit } from '@devvit/public-api';
 
-// Register the Gemini API key as a secret App-scoped setting.
-// Configure once uploaded via: npx devvit settings set GEMINI_API_KEY
+// Register the Gemini API key as a secret installation-scoped setting.
+// Configure per subreddit via Reddit developer portal → Installations → Configure.
 Devvit.addSettings([
   {
     name: 'GEMINI_API_KEY',
     label: 'Google Gemini API Key',
     type: 'string',
     isSecret: true,
-    scope: 'app' as never, // SettingScope.App
+    scope: 'installation' as never, // SettingScope.Installation
     helpText: 'Get one from https://aistudio.google.com/apikey — used server-side only, never sent to the browser.',
   },
 ]);
@@ -55,7 +55,7 @@ app.post('/api/generate-avatar', async (req, res) => {
     if (!apiKey || typeof apiKey !== 'string') {
       res.status(500).json({
         error:
-          'GEMINI_API_KEY not configured. After `npx devvit upload`, run: npx devvit settings set GEMINI_API_KEY (or set it in the Reddit developer portal → your app → Settings).',
+          'GEMINI_API_KEY not configured. After `npx devvit upload`, open the Reddit developer portal → your app → Installations → your test subreddit → Configure.',
       });
       return;
     }
