@@ -431,7 +431,16 @@ class GameScene extends Phaser.Scene {
     this.hudText.setText(
       `HP ${"❤".repeat(Math.max(0, this.hp))}${"·".repeat(Math.max(0, 3 - this.hp))}   💎 ${this.crystalsCollected}   ⚔ ${this.aliensDefeated}   Score ${Math.round(this.score)}`,
     );
-    this.powerText.setText(`Hidden Power: ${Math.floor(this.power)}%${this.powerUnlocked ? ` — ${this.powerUnlocked}` : ""}`);
+    const bar = this.data.get("powerBar") as Phaser.GameObjects.Rectangle | undefined;
+    if (bar) {
+      bar.width = Math.max(0, (this.power / 100) * 276);
+      bar.fillColor = this.powerUnlocked ? 0xfbbf24 : this.power >= 75 ? 0xec4899 : 0xa855f7;
+    }
+    this.powerText.setText(
+      this.powerUnlocked
+        ? `⚡ ${this.powerUnlocked.toUpperCase()} UNLOCKED — DEFEAT THE BOSS!`
+        : `HIDDEN POWER ${Math.floor(this.power)}% — fill to 100% to unlock boss & mystery power`,
+    );
   }
 
   update() {
