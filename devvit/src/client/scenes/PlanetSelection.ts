@@ -2,7 +2,16 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../game';
 import { PLANETS, type Planet } from '../../shared/api';
 
+// Module-level cache so a generated avatar persists across scene restarts.
+let cachedAiAvatarDataUrl: string | null = null;
+
 export class PlanetSelection extends Phaser.Scene {
+  private statusText!: Phaser.GameObjects.Text;
+  private aiButtonBg!: Phaser.GameObjects.Rectangle;
+  private aiButtonText!: Phaser.GameObjects.Text;
+  private isGenerating = false;
+  private selectedPlanet: Planet = PLANETS[0]!;
+
   constructor() {
     super('PlanetSelection');
   }
@@ -22,7 +31,7 @@ export class PlanetSelection extends Phaser.Scene {
     }
 
     this.add
-      .text(GAME_WIDTH / 2, 50, 'CHOOSE YOUR PLANET', {
+      .text(GAME_WIDTH / 2, 40, 'CHOOSE YOUR PLANET', {
         fontFamily: 'monospace',
         fontSize: '28px',
         color: '#f8fafc',
@@ -34,24 +43,45 @@ export class PlanetSelection extends Phaser.Scene {
     const gap = 20;
     const totalW = PLANETS.length * cardW + (PLANETS.length - 1) * gap;
     const startX = (GAME_WIDTH - totalW) / 2 + cardW / 2;
-    const y = GAME_HEIGHT / 2 + 10;
+    const y = GAME_HEIGHT / 2 - 10;
 
     PLANETS.forEach((planet, i) => {
       const x = startX + i * (cardW + gap);
       this.buildCard(planet, x, y, cardW);
     });
 
-    this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, 'Click a planet to begin', {
+    // AI Avatar generator button
+    const btnY = GAME_HEIGHT - 70;
+    this.aiButtonBg = this.add
+      .rectangle(GAME_WIDTH / 2, btnY, 340, 44, 0x7c3aed, 1)
+      .setStrokeStyle(2, 0xfbbf24, 1)
+      .setInteractive({ useHandCursor: true });
+    this.aiButtonText = this.add
+      .text(GAME_WIDTH / 2, btnY, cachedAiAvatarDataUrl ? '✨ REGENERATE COSMIC AVATAR' : '✨ GENERATE COSMIC AVATAR', {
         fontFamily: 'monospace',
-        fontSize: '13px',
-        color: '#94a3b8',
+        fontSize: '15px',
+        color: '#fef3c7',
+        fontStyle: 'bold',
       })
+      .setOrigin(0.5);
+    this.aiButtonBg.on('pointerdown', () => this.generateAvatar());
+    this.aiButtonBg.on('pointerover', () => this.aiButtonBg.setFillStyle(0x8b5cf6, 1));
+    this.aiButtonBg.on('pointerout', () => this.aiButtonBg.setFillStyle(0x7c3aed, 1));
+
+    this.statusText = this.add
+      .text(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT - 30,
+        cachedAiAvatarDataUrl
+          ? 'AI avatar ready — click a planet to play!'
+          : 'Optional: generate a planet-themed AI avatar, or just click a planet.',
+        { fontFamily: 'monospace', fontSize: '12px', color: '#94a3b8' },
+      )
       .setOrigin(0.5);
   }
 
   private buildCard(planet: Planet, x: number, y: number, w: number) {
-    const h = 240;
+    const h = 220;
     const container = this.add.container(x, y);
 
     const bg = this.add
@@ -59,27 +89,27 @@ export class PlanetSelection extends Phaser.Scene {
       .setStrokeStyle(2, planet.accent, 0.9);
     container.add(bg);
 
-    const orb = this.add.circle(0, -30, 44, planet.accent, 0.9);
-    const orbRing = this.add.circle(0, -30, 52).setStrokeStyle(2, 0xffffff, 0.4);
+    const orb = this.add.circle(0, -30, 40, planet.accent, 0.9);
+    const orbRing = this.add.circle(0, -30, 48).setStrokeStyle(2, 0xffffff, 0.4);
     container.add([orb, orbRing]);
 
     const name = this.add
-      .text(0, 30, planet.name, {
+      .text(0, 22, planet.name, {
         fontFamily: 'monospace',
-        fontSize: '22px',
+        fontSize: '20px',
         color: '#f8fafc',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
     const tag = this.add
-      .text(0, 58, planet.tagline, {
+      .text(0, 48, planet.tagline, {
         fontFamily: 'monospace',
-        fontSize: '13px',
+        fontSize: '12px',
         color: '#cbd5e1',
       })
       .setOrigin(0.5);
     const play = this.add
-      .text(0, 92, 'PLAY ▶', {
+      .text(0, 82, 'PLAY ▶', {
         fontFamily: 'monospace',
         fontSize: '16px',
         color: '#0f172a',
@@ -92,6 +122,7 @@ export class PlanetSelection extends Phaser.Scene {
 
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => {
+      this.selectedPlanet = planet;
       this.tweens.add({ targets: container, scale: 1.04, duration: 150 });
     });
     bg.on('pointerout', () => {
@@ -100,8 +131,43 @@ export class PlanetSelection extends Phaser.Scene {
     bg.on('pointerdown', () => this.startPlanet(planet));
   }
 
+  private async generateAvatar() {
+    if (this.isGenerating) return;
+    this.isGenerating = true;
+    this.aiButtonText.setText('✨ GENERATING... (10–20s)');
+    this.statusText.setText('Contacting cosmic art AI... please wait.');
+
+    try {
+      const resp = await fetch('/api/generate-avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planet: this.selectedPlanet.id }),
+      });
+      const json = (await resp.json()) as { dataUrl?: string; error?: string };
+      if (!resp.ok || !json.dataUrl) {
+        throw new Error(json.error ?? `HTTP ${resp.status}`);
+      }
+      cachedAiAvatarDataUrl = json.dataUrl;
+
+      // Preload as a Phaser texture under key 'aiAvatar' so Game can use it.
+      if (this.textures.exists('aiAvatar')) this.textures.remove('aiAvatar');
+      this.load.image('aiAvatar', json.dataUrl);
+      this.load.once('complete', () => {
+        this.aiButtonText.setText('✨ REGENERATE COSMIC AVATAR');
+        this.statusText.setText('✅ AI avatar ready — click a planet to play!');
+        this.isGenerating = false;
+      });
+      this.load.start();
+    } catch (err) {
+      console.error('[qokah] avatar gen failed', err);
+      this.aiButtonText.setText('✨ GENERATE COSMIC AVATAR');
+      this.statusText.setText(`❌ ${String(err).slice(0, 80)}`);
+      this.isGenerating = false;
+    }
+  }
+
   private startPlanet(planet: Planet) {
-    // Short loading animation before Game
+    if (this.isGenerating) return;
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('Game', { planet });

@@ -51,6 +51,11 @@ export class Game extends Phaser.Scene {
   }
 
   preload() {
+    // Prefer the AI-generated avatar if the player generated one in PlanetSelection.
+    if (this.textures.exists('aiAvatar')) {
+      this.avatarKey = 'aiAvatar';
+      return;
+    }
     const profile = this.cache.json.get('profile') as InitResponse | undefined;
     if (profile?.avatarUrl) {
       this.load.image('remoteAvatar', profile.avatarUrl);
