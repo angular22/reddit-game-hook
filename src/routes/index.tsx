@@ -77,14 +77,16 @@ function TokahApp() {
   useEffect(() => {
     try {
       const a = localStorage.getItem(STORE.avatar);
+      const s = localStorage.getItem(STORE.selfie);
       const p = localStorage.getItem(STORE.planet);
       if (a) setAvatar(a);
+      if (s) setSelfie(s);
       if (p) setPlanet(p);
       const saved = localStorage.getItem(STORE.power);
       if (saved) {
         const parsed = JSON.parse(saved) as { power: string; date: string };
         setSavedPower(parsed.power);
-        setPowerAvailableToday(parsed.date !== todayUtc()); // available if unlocked on a previous day
+        setPowerAvailableToday(parsed.date !== todayUtc());
       }
       setStreak(loadStreak());
       setLeaderboard(JSON.parse(localStorage.getItem(STORE.scores) ?? "[]"));
@@ -96,7 +98,11 @@ function TokahApp() {
     if (!f) return;
     if (f.size > 5 * 1024 * 1024) { setError("Image too large (max 5MB)"); return; }
     const reader = new FileReader();
-    reader.onload = () => setSelfie(reader.result as string);
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setSelfie(dataUrl);
+      try { localStorage.setItem(STORE.selfie, dataUrl); } catch { /* quota */ }
+    };
     reader.readAsDataURL(f);
   }
 
