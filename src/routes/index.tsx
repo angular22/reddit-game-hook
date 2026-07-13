@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { generateTokahAvatar } from "@/lib/avatar.functions";
-import { createGame, type GameResult } from "@/lib/tokah-game";
-import type Phaser from "phaser";
+import type { GameResult } from "@/lib/tokah-game";
 
 export const Route = createFileRoute("/")({
   head: () => ({
