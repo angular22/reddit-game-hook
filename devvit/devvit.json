@@ -1,7 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "qokah",
-  "version": "0.0.1",
   "post": {
     "dir": "dist/client",
     "entrypoints": {
