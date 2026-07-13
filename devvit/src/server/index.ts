@@ -1,7 +1,8 @@
-import { context, reddit } from '@devvit/web/server';
-import { createServer } from '@devvit/web/server';
+import express from 'express';
+import { context, reddit, createServer, getServerPort } from '@devvit/web/server';
 
-const app = createServer();
+const app = express();
+app.use(express.json({ limit: '10mb' }));
 
 // Player profile: returns Reddit username + snoovatar for the current viewer.
 app.get('/api/profile', async (_req, res) => {
