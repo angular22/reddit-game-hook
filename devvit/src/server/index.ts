@@ -56,14 +56,14 @@ app.post('/api/generate-avatar', async (req, res) => {
     const imgB64 = match[2];
     const fallbackDataUrl = imageDataUrl;
 
-    const apiKey = await settings.get('QOKAH_GEMINI_API_KEY');
+    const apiKey = await settings.get('qokahGeminiApiKey');
     if (!apiKey || typeof apiKey !== 'string') {
       // AI not configured — return the selfie so the game is still playable.
       res.json({
         dataUrl: fallbackDataUrl,
         fallback: true,
         error:
-          'QOKAH_GEMINI_API_KEY not configured. Run: npx devvit settings set QOKAH_GEMINI_API_KEY',
+          'qokahGeminiApiKey not configured. Run: npx devvit settings set qokahGeminiApiKey',
       });
       return;
     }
