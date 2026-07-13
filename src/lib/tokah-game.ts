@@ -342,11 +342,11 @@ class GameScene extends Phaser.Scene {
       // Badge the avatar: turn ring gold + add rotating crown
       const ring = this.data.get("ring") as Phaser.GameObjects.Arc | undefined;
       if (ring) ring.setStrokeStyle(6, 0xfbbf24, 1);
-      const crown = this.add.text(0, -110, "👑", { fontSize: "56px" }).setOrigin(0.5);
+      const crown = this.add.text(0, -145, "👑", { fontSize: "64px" }).setOrigin(0.5);
       this.player.add(crown);
-      this.tweens.add({ targets: crown, y: -122, yoyo: true, duration: 700, repeat: -1, ease: "Sine.easeInOut" });
+      this.tweens.add({ targets: crown, y: -160, yoyo: true, duration: 700, repeat: -1, ease: "Sine.easeInOut" });
       // Grow the avatar (scale player container up)
-      this.tweens.add({ targets: this.player, scale: 2.3, duration: 600, ease: "Back.out" });
+      this.tweens.add({ targets: this.player, scale: 2.8, duration: 600, ease: "Back.out" });
       // Screen flash
       const flash = this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0xfbbf24, 0.6);
       this.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
