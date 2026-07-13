@@ -325,6 +325,15 @@ class GameScene extends Phaser.Scene {
       // Unlock a random hidden power (persist for tomorrow)
       const p = HIDDEN_POWERS[Phaser.Math.Between(0, HIDDEN_POWERS.length - 1)];
       this.powerUnlocked = p.name;
+      // Badge the avatar: turn ring gold + add rotating crown
+      const ring = this.data.get("ring") as Phaser.GameObjects.Arc | undefined;
+      if (ring) ring.setStrokeStyle(5, 0xfbbf24, 1);
+      const crown = this.add.text(0, -72, "👑", { fontSize: "36px" }).setOrigin(0.5);
+      this.player.add(crown);
+      this.tweens.add({ targets: crown, y: -82, yoyo: true, duration: 700, repeat: -1, ease: "Sine.easeInOut" });
+      // Screen flash
+      const flash = this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0xfbbf24, 0.6);
+      this.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
       this.showToast(`⚡ HIDDEN POWER UNLOCKED: ${p.name}!`);
       this.spawnBoss();
     }
