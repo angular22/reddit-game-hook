@@ -341,17 +341,37 @@ class GameScene extends Phaser.Scene {
       this.powerUnlocked = p.name;
       // Badge the avatar: turn ring gold + add rotating crown
       const ring = this.data.get("ring") as Phaser.GameObjects.Arc | undefined;
-      if (ring) ring.setStrokeStyle(5, 0xfbbf24, 1);
-      const crown = this.add.text(0, -72, "👑", { fontSize: "36px" }).setOrigin(0.5);
+      if (ring) ring.setStrokeStyle(6, 0xfbbf24, 1);
+      const crown = this.add.text(0, -110, "👑", { fontSize: "56px" }).setOrigin(0.5);
       this.player.add(crown);
-      this.tweens.add({ targets: crown, y: -82, yoyo: true, duration: 700, repeat: -1, ease: "Sine.easeInOut" });
+      this.tweens.add({ targets: crown, y: -122, yoyo: true, duration: 700, repeat: -1, ease: "Sine.easeInOut" });
+      // Grow the avatar (scale player container up)
+      this.tweens.add({ targets: this.player, scale: 1.6, duration: 600, ease: "Back.out" });
       // Screen flash
       const flash = this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0xfbbf24, 0.6);
       this.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
-      this.showToast(`⚡ HIDDEN POWER UNLOCKED: ${p.name}!`);
+
+      // Persistent banner — stays on screen until game ends
+      const bannerBg = this.add.rectangle(WORLD_W / 2, 90, 640, 70, 0x7c3aed, 0.95)
+        .setStrokeStyle(3, 0xfbbf24, 1)
+        .setDepth(1000);
+      const bannerText = this.add
+        .text(WORLD_W / 2, 90, `🏆 YOU WON A POWER: ${p.name.toUpperCase()} 🏆\nDefeat the boss to keep it!`, {
+          fontFamily: "monospace",
+          fontSize: "18px",
+          color: "#fef3c7",
+          fontStyle: "bold",
+          align: "center",
+        })
+        .setOrigin(0.5)
+        .setDepth(1001);
+      this.tweens.add({ targets: [bannerBg, bannerText], scale: { from: 0.6, to: 1 }, duration: 500, ease: "Back.out" });
+      this.tweens.add({ targets: bannerBg, alpha: { from: 0.95, to: 0.75 }, duration: 900, yoyo: true, repeat: -1 });
+
       this.spawnBoss();
     }
   }
+
 
   spawnBoss() {
     if (this.spawnEvent) this.spawnEvent.remove();
