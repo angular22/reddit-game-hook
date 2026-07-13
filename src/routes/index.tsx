@@ -420,3 +420,97 @@ function ResultScreen({ result, planet, leaderboard, savedPower, onReplay, onNew
     </div>
   );
 }
+
+function SelfieCapture({ selfie, onCapture }: { selfie: string | null; onCapture: (dataUrl: string) => void }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [streaming, setStreaming] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  function stopStream() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setStreaming(false);
+  }
+
+  async function startCamera() {
+    setErr(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setStreaming(true);
+    } catch (e) {
+      setErr((e as Error).message || "Camera access denied");
+    }
+  }
+
+  function snap() {
+    const v = videoRef.current;
+    if (!v) return;
+    const size = Math.min(v.videoWidth, v.videoHeight);
+    const sx = (v.videoWidth - size) / 2;
+    const sy = (v.videoHeight - size) / 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    // mirror so it matches preview
+    ctx.translate(size, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(v, sx, sy, size, size, 0, 0, size, size);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    stopStream();
+    onCapture(dataUrl);
+  }
+
+  useEffect(() => () => stopStream(), []);
+
+  if (selfie) {
+    return (
+      <div className="relative aspect-square overflow-hidden rounded-xl border-2 border-fuchsia-500/40 bg-black/20">
+        <img src={selfie} alt="preview" className="h-full w-full object-cover" />
+        <button
+          onClick={() => { onCapture(""); startCamera(); }}
+          className="absolute bottom-2 right-2 rounded-full bg-black/70 px-3 py-1 text-xs font-bold text-white hover:bg-black"
+        >Retake</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-white/20 bg-black/40">
+      <video
+        ref={videoRef}
+        playsInline
+        muted
+        className={`h-full w-full object-cover ${streaming ? "" : "hidden"}`}
+        style={{ transform: "scaleX(-1)" }}
+      />
+      {!streaming && (
+        <button
+          onClick={startCamera}
+          className="flex flex-col items-center text-center text-sm text-slate-300 hover:text-fuchsia-300"
+        >
+          <span className="text-3xl">🤳</span>
+          <span className="mt-2 font-bold">Start camera</span>
+          <span className="text-xs text-slate-500">Front-facing selfie</span>
+        </button>
+      )}
+      {streaming && (
+        <button
+          onClick={snap}
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-fuchsia-500 px-5 py-2 text-sm font-black text-white shadow-lg hover:bg-fuchsia-400"
+        >📸 Capture</button>
+      )}
+      {err && <div className="absolute inset-x-2 bottom-2 rounded bg-red-500/80 p-2 text-xs text-white">{err}</div>}
+    </div>
+  );
+}
