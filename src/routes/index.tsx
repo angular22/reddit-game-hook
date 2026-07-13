@@ -393,13 +393,20 @@ function PlayScreen({ avatar, savedPower, onFinished }: {
   );
 }
 
-function ResultScreen({ result, planet, leaderboard, savedPower, onReplay, onNewAvatar }: {
+function ResultScreen({ result, planet, leaderboard, savedPower, avatar, onReplay, onNewAvatar }: {
   result: GameResult; planet: string; leaderboard: { name: string; score: number; date: string }[];
-  savedPower: string | null; onReplay: () => void; onNewAvatar: () => void;
+  savedPower: string | null; avatar: string | null; onReplay: () => void; onNewAvatar: () => void;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className={`rounded-2xl border p-6 text-center ${result.won ? "border-emerald-400/30 bg-emerald-500/10" : "border-red-400/30 bg-red-500/10"}`}>
+        {avatar && (
+          <img
+            src={avatar}
+            alt="Your avatar"
+            className={`mx-auto mb-3 h-24 w-24 rounded-full border-2 object-cover ${result.won ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.5)]" : "border-white/20"}`}
+          />
+        )}
         <div className="text-5xl">{result.won ? "🏆" : "💀"}</div>
         <h2 className="mt-2 text-2xl font-bold">{result.won ? "Boss Defeated!" : "You Fell"}</h2>
         <p className="mt-1 text-4xl font-black tabular-nums">{result.score}</p>
@@ -418,9 +425,13 @@ function ResultScreen({ result, planet, leaderboard, savedPower, onReplay, onNew
         {!result.won && savedPower && (
           <p className="mt-3 text-xs text-slate-400">Tip: use your saved power (<kbd className="rounded bg-black/30 px-1">E</kbd>) to survive longer.</p>
         )}
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <button onClick={onReplay} className="rounded-full bg-fuchsia-500 px-5 py-2 text-sm font-bold hover:bg-fuchsia-400">Play again</button>
-          <button onClick={onNewAvatar} className="rounded-full border border-white/20 px-5 py-2 text-sm font-bold hover:bg-white/10">New avatar</button>
+        <div className="mt-5 flex flex-col items-stretch gap-2">
+          <button onClick={onNewAvatar} className="rounded-full bg-gradient-to-r from-fuchsia-500 to-cyan-500 px-5 py-3 text-sm font-black text-white shadow-lg hover:opacity-90">
+            🔄 Restart with a new avatar
+          </button>
+          <div className="flex justify-center gap-2">
+            <button onClick={onReplay} className="rounded-full border border-white/20 px-5 py-2 text-xs font-bold hover:bg-white/10">Play again (same avatar)</button>
+          </div>
         </div>
       </div>
 
