@@ -143,7 +143,7 @@ export class PlanetSelection extends Phaser.Scene {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planet: this.selectedPlanet.id }),
       });
-      const json = (await resp.json()) as { dataUrl?: string; error?: string };
+      const json = (await resp.json()) as { dataUrl?: string; error?: string; fallback?: boolean };
       if (!resp.ok || !json.dataUrl) {
         throw new Error(json.error ?? `HTTP ${resp.status}`);
       }
@@ -154,7 +154,9 @@ export class PlanetSelection extends Phaser.Scene {
       this.load.image('aiAvatar', json.dataUrl);
       this.load.once('complete', () => {
         this.aiButtonText.setText('✨ REGENERATE COSMIC AVATAR');
-        this.statusText.setText('✅ AI avatar ready — click a planet to play!');
+        this.statusText.setText(
+          json.fallback ? 'AI busy — using your Reddit avatar. Click a planet to play!' : '✅ AI avatar ready — click a planet to play!',
+        );
         this.isGenerating = false;
       });
       this.load.start();

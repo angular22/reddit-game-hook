@@ -52,32 +52,18 @@ Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. F
       generationConfig: { responseModalities: ["IMAGE"] },
     });
 
-    let res!: Response;
-    let lastErr = "";
-    for (let attempt = 0; attempt < 4; attempt++) {
-      res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
-      if (res.ok) break;
-      lastErr = await res.text();
-      if (res.status === 429 || res.status === 503) {
-        const retryAfter = Number(res.headers.get("retry-after"));
-        const wait = Number.isFinite(retryAfter) && retryAfter > 0
-          ? retryAfter * 1000
-          : ([2000, 5000, 10000, 20000][attempt] ?? 20000);
-        await new Promise((r) => setTimeout(r, wait));
-        continue;
-      }
-      break;
-    }
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
 
     if (!res.ok) {
-      if (res.status === 429) {
-        throw new Error("Gemini is rate-limiting free-tier requests. Wait ~30–60s and try again.");
+      const errBody = await res.text();
+      if (res.status === 429 || res.status === 503) {
+        throw new Error("AI avatar service is busy. Your selfie can be used in-game instead.");
       }
-      throw new Error(`Gemini error (${res.status}): ${lastErr.slice(0, 200)}`);
+      throw new Error(`Gemini error (${res.status}): ${errBody.slice(0, 200)}`);
     }
 
     const json = (await res.json()) as {

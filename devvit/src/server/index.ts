@@ -89,6 +89,8 @@ Keep the character's identity clearly recognizable (same body shape, colors, sil
 Restyle as: ${style}.
 Full-body character, centered, dynamic pose, painterly sci-fi game art, vibrant colors, dark cosmic background with stars. No text, no watermark.`;
 
+    const fallbackDataUrl = `data:${imgMime};base64,${imgB64}`;
+
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
@@ -112,6 +114,14 @@ Full-body character, centered, dynamic pose, painterly sci-fi game art, vibrant 
     if (!geminiRes.ok) {
       const errBody = await geminiRes.text();
       console.error('[qokah] gemini error', geminiRes.status, errBody.slice(0, 500));
+      if (geminiRes.status === 429 || geminiRes.status === 503) {
+        res.json({
+          dataUrl: fallbackDataUrl,
+          fallback: true,
+          error: 'AI avatar service is busy, so the game is using your Reddit avatar instead.',
+        });
+        return;
+      }
       res.status(geminiRes.status).json({
         error: `Gemini error (${geminiRes.status}): ${errBody.slice(0, 300)}`,
       });
