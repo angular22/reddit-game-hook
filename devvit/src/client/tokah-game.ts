@@ -338,6 +338,7 @@ class GameScene extends Phaser.Scene {
     if (this.power >= 100 && !this.powerUnlocked) {
       // Unlock a random hidden power (persist for tomorrow)
       const p = HIDDEN_POWERS[Phaser.Math.Between(0, HIDDEN_POWERS.length - 1)];
+      if (!p) return;
       this.powerUnlocked = p.name;
       // Badge the avatar: turn ring gold + add rotating crown
       const ring = this.data.get("ring") as Phaser.GameObjects.Arc | undefined;
@@ -538,7 +539,7 @@ class GameScene extends Phaser.Scene {
     );
   }
 
-  update() {
+  override update() {
     if (this.finished) return;
     const speed = 220;
     const left = this.cursors.left?.isDown || this.keys.A.isDown;
@@ -585,4 +586,3 @@ export function createGame(parent: HTMLElement, avatarBase64: string | null, sav
 }
 
 export { HIDDEN_POWERS };
-export type { GameResult };
