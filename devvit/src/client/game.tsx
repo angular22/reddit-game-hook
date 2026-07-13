@@ -3,7 +3,7 @@ import './index.css';
 import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useGame } from './hooks/useGame';
-import type { GameResult } from './tokah-game';
+import type { GameResult } from './qokah-game';
 import qokahLogo from '../../assets/qokah-logo.png';
 
 const PLANETS = [
@@ -362,7 +362,7 @@ function PlayScreen({
     let disposed = false;
     let localGame: { destroy: (r: boolean) => void } | null = null;
     const base64 = avatar?.startsWith('data:') ? avatar.split(',')[1] : avatar;
-    import('./tokah-game').then(({ createGame }) => {
+    import('./qokah-game').then(({ createGame }) => {
       if (disposed || !hostRef.current) return;
       const g = createGame(hostRef.current, base64 ?? null, savedPower);
       localGame = g as unknown as { destroy: (r: boolean) => void };
