@@ -1,6 +1,6 @@
 import './index.css';
 
-import { navigateTo, context, requestExpandedMode } from '@devvit/web/client';
+import { context, requestExpandedMode } from '@devvit/web/client';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import qokahLogo from '../../assets/qokah-logo.png';

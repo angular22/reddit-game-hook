@@ -125,7 +125,7 @@ export function useGame() {
     setState((prev) => ({ ...prev, planet }));
   }, []);
 
-  const setSelfie = useCallback((selfie: string | null) => {
+  const setSelfie = useCallback((_selfie: string | null) => {
     // Selfie is not persisted server-side; only the generated avatar is.
     // This hook keeps the selfie only in memory if needed by the caller.
   }, []);
