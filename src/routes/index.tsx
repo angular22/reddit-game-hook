@@ -8,13 +8,13 @@ import tokahLogo from "@/assets/tokah-logo.png";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Tokah — Your Avatar Creates History" },
+      { title: "Qokah — Your Avatar Creates History" },
       {
         name: "description",
         content:
           "Upload a selfie, pick your planet, and become a cosmic warrior. Fight aliens on Pluto, unlock hidden powers, and come back tomorrow to use them.",
       },
-      { property: "og:title", content: "Tokah — Your Avatar Creates History" },
+      { property: "og:title", content: "Qokah — Your Avatar Creates History" },
       { property: "og:description", content: "Selfie → AI avatar → Phaser boss fight. Unlock a hidden power, return tomorrow." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -154,7 +154,7 @@ function TokahApp() {
       <div className="mx-auto max-w-4xl px-4 py-8">
         <header className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-black tracking-tight">
-            <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">TOKAH</span>
+            <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">QOKAH</span>
           </h1>
           <div className="flex gap-4 text-xs text-slate-400">
             <span>🔥 {streak.count} day streak</span>
@@ -224,13 +224,13 @@ function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
     <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur">
       <img
         src={tokahLogo}
-        alt="TOKAH"
+        alt="QOKAH"
         width={1152}
         height={576}
         className="mx-auto -mt-2 mb-2 h-auto w-full max-w-sm drop-shadow-[0_0_30px_rgba(217,70,239,0.35)]"
       />
       {avatar ? (
-        <img src={avatar} alt="Your Tokah avatar" className="mx-auto h-40 w-40 rounded-2xl border-2 border-fuchsia-500 object-cover shadow-[0_0_40px_rgba(217,70,239,0.4)]" />
+        <img src={avatar} alt="Your Qokah avatar" className="mx-auto h-40 w-40 rounded-2xl border-2 border-fuchsia-500 object-cover shadow-[0_0_40px_rgba(217,70,239,0.4)]" />
       ) : (
         <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-2xl border-2 border-dashed border-white/20 text-5xl">👤</div>
       )}
