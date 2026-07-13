@@ -8,13 +8,13 @@ import tokahLogo from "@/assets/tokah-logo.png";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Tokah — Your Avatar Creates History" },
+      { title: "Qokah — Your Avatar Creates History" },
       {
         name: "description",
         content:
           "Upload a selfie, pick your planet, and become a cosmic warrior. Fight aliens on Pluto, unlock hidden powers, and come back tomorrow to use them.",
       },
-      { property: "og:title", content: "Tokah — Your Avatar Creates History" },
+      { property: "og:title", content: "Qokah — Your Avatar Creates History" },
       { property: "og:description", content: "Selfie → AI avatar → Phaser boss fight. Unlock a hidden power, return tomorrow." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
