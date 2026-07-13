@@ -167,6 +167,7 @@ function TokahApp() {
           <PlanetScreen
             selfie={selfie}
             onFile={onFile}
+            onSelfie={setSelfie}
             planet={planet}
             setPlanet={setPlanet}
             onGenerate={handleGenerate}
