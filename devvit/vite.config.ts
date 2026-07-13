@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
 export default defineConfig(({ mode }) => {
@@ -29,6 +30,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     root: 'src/client',
+    plugins: [react()],
     publicDir: resolve(__dirname, 'assets'),
     build: {
       outDir: resolve(__dirname, 'dist/client'),

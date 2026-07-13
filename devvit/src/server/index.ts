@@ -49,47 +49,46 @@ const PLANET_STYLES: Record<string, string> = {
 };
 
 // AI avatar generation via Google Gemini (Nano Banana). Server-side only.
+// Accepts a client-posted selfie data URL + planet. Falls back to the selfie if AI is unavailable.
 app.post('/api/generate-avatar', async (req, res) => {
   try {
+    const body = (req.body ?? {}) as { imageDataUrl?: string; planet?: string };
+    const imageDataUrl = String(body.imageDataUrl ?? '');
+    if (!imageDataUrl.startsWith('data:')) {
+      res.status(400).json({ error: 'Missing imageDataUrl' });
+      return;
+    }
+    const planetId = String(body.planet ?? 'pluto').toLowerCase();
+    const style = PLANET_STYLES[planetId] ?? PLANET_STYLES.pluto;
+
+    const match = /^data:([^;]+);base64,(.+)$/.exec(imageDataUrl);
+    if (!match) {
+      res.status(400).json({ error: 'Invalid image data URL' });
+      return;
+    }
+    const imgMime = match[1];
+    const imgB64 = match[2];
+    const fallbackDataUrl = imageDataUrl;
+
     const apiKey = await settings.get('GEMINI_API_KEY');
     if (!apiKey || typeof apiKey !== 'string') {
-      res.status(500).json({
+      // AI not configured — return the selfie so the game is still playable.
+      res.json({
+        dataUrl: fallbackDataUrl,
+        fallback: true,
         error:
-          'GEMINI_API_KEY not configured. After `npx devvit upload`, run: npx devvit settings set GEMINI_API_KEY (or set it in the Reddit developer portal → your app → Settings).',
+          'GEMINI_API_KEY not configured. Run: npx devvit settings set GEMINI_API_KEY',
       });
       return;
     }
 
-    const planetId = String((req.body as { planet?: string } | undefined)?.planet ?? 'pluto').toLowerCase();
-    const style = PLANET_STYLES[planetId] ?? PLANET_STYLES.pluto;
+    const prompt = `Create a heroic cosmic warrior character illustration for the planet ${planetId}.
 
-    const username = await reddit.getCurrentUsername();
-    if (!username) {
-      res.status(401).json({ error: 'Not signed in' });
-      return;
-    }
-    const user = await reddit.getUserByUsername(username);
-    const snoovatarUrl = await user?.getSnoovatarUrl();
-    if (!snoovatarUrl) {
-      res.status(400).json({ error: 'No Snoovatar found for user' });
-      return;
-    }
+CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of the person in the reference photo — same face shape, same eyes, same nose, same mouth, same skin tone, same hair, same facial hair, same age, same gender, same ethnicity. Do NOT stylize, cartoonify, idealize, beautify, or change the face in any way. Treat the face as a direct photo-composite of the reference onto the warrior body. The face must be clearly visible, unobstructed by helmets or masks, and instantly recognizable as the same person.
 
-    const imgResp = await fetch(snoovatarUrl);
-    if (!imgResp.ok) {
-      res.status(500).json({ error: `Failed to fetch snoovatar (${imgResp.status})` });
-      return;
-    }
-    const imgBuf = Buffer.from(await imgResp.arrayBuffer());
-    const imgB64 = imgBuf.toString('base64');
-    const imgMime = imgResp.headers.get('content-type')?.split(';')[0] ?? 'image/png';
+Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask.`;
 
-    const prompt = `Create a heroic cosmic warrior avatar based on this reference character.
-Keep the character's identity clearly recognizable (same body shape, colors, silhouette).
-Restyle as: ${style}.
-Full-body character, centered, dynamic pose, painterly sci-fi game art, vibrant colors, dark cosmic background with stars. No text, no watermark.`;
-
-    const fallbackDataUrl = `data:${imgMime};base64,${imgB64}`;
+    
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(apiKey)}`,
