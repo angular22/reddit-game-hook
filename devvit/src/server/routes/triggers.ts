@@ -5,7 +5,7 @@ import { createPost } from './core/post';
 
 export const triggers = new Hono();
 
-triggers.post('/on-app-install', async (_c) => {
+triggers.post('/on-app-install', async (c) => {
   try {
     const post = await createPost();
 
