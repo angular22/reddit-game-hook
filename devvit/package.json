@@ -16,6 +16,7 @@
     "node": ">=22.2.0"
   },
   "dependencies": {
+    "@devvit/public-api": "0.13.7",
     "@devvit/start": "0.13.7",
     "@devvit/web": "0.13.7",
     "devvit": "0.13.7",
