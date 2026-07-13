@@ -243,7 +243,7 @@ function PlanetScreen({
     <div className="grid gap-6 md:grid-cols-2">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">1. Take a selfie</h3>
-        <SelfieCapture selfie={selfie} onCapture={(dataUrl) => onFile({ target: { files: null } } as never) || onCaptureShim(dataUrl)} />
+        <SelfieCapture selfie={selfie} onCapture={onSelfie} />
         {!selfie && (
           <label className="mt-2 block w-full cursor-pointer rounded-lg border border-white/10 py-2 text-center text-xs text-slate-400 hover:bg-white/5">
             or choose from gallery
