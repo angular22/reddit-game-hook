@@ -228,10 +228,11 @@ function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
 }
 
 function PlanetScreen({
-  selfie, onFile, planet, setPlanet, onGenerate, error, existingAvatar, onSkipGenerate,
+  selfie, onFile, onSelfie, planet, setPlanet, onGenerate, error, existingAvatar, onSkipGenerate,
 }: {
   selfie: string | null;
   onFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSelfie: (dataUrl: string) => void;
   planet: string;
   setPlanet: (p: string) => void;
   onGenerate: () => void;
