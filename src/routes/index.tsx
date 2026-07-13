@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { generateTokahAvatar } from "@/lib/avatar.functions";
 import type { GameResult } from "@/lib/tokah-game";
+import tokahLogo from "@/assets/tokah-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
