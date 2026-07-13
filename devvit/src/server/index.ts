@@ -1,19 +1,5 @@
 import { context, reddit, settings } from '@devvit/web/server';
 import { createServer } from '@devvit/web/server';
-import { Devvit } from '@devvit/public-api';
-
-// Register the Gemini API key as a secret App-scoped setting.
-// Configure once uploaded via: npx devvit settings set GEMINI_API_KEY
-Devvit.addSettings([
-  {
-    name: 'GEMINI_API_KEY',
-    label: 'Google Gemini API Key',
-    type: 'string',
-    isSecret: true,
-    scope: 'app' as never, // SettingScope.App
-    helpText: 'Get one from https://aistudio.google.com/apikey — used server-side only, never sent to the browser.',
-  },
-]);
 
 const app = createServer();
 
