@@ -23,15 +23,5 @@
         "endpoint": "/internal/menu/post-create"
       }
     ]
-  },
-  "settings": {
-    "installation": {
-      "GEMINI_API_KEY": {
-        "type": "string",
-        "label": "Google Gemini API Key",
-        "helpText": "From https://aistudio.google.com/apikey. Used server-side only, never exposed to the browser.",
-        "isSecret": true
-      }
-    }
   }
 }
