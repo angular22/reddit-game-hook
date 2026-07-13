@@ -2,16 +2,16 @@ import { context, reddit, settings } from '@devvit/web/server';
 import { createServer } from '@devvit/web/server';
 import { Devvit } from '@devvit/public-api';
 
-// Register the Lovable AI Gateway key as a secret App-scoped setting.
-// Configure once uploaded via: npx devvit settings set LOVABLE_API_KEY
+// Register the Gemini API key as a secret App-scoped setting.
+// Configure once uploaded via: npx devvit settings set GEMINI_API_KEY
 Devvit.addSettings([
   {
-    name: 'LOVABLE_API_KEY',
-    label: 'Lovable AI Gateway API Key',
+    name: 'GEMINI_API_KEY',
+    label: 'Google Gemini API Key',
     type: 'string',
     isSecret: true,
     scope: 'app' as never, // SettingScope.App
-    helpText: 'From your Lovable workspace. Used server-side only.',
+    helpText: 'Get one from https://aistudio.google.com/apikey — used server-side only, never sent to the browser.',
   },
 ]);
 
@@ -48,13 +48,14 @@ const PLANET_STYLES: Record<string, string> = {
   sun: 'solar champion wreathed in golden plasma, radiant crown, molten sword',
 };
 
-// AI avatar generation via Lovable AI Gateway (Gemini Nano Banana model).
+// AI avatar generation via Google Gemini (Nano Banana). Server-side only.
 app.post('/api/generate-avatar', async (req, res) => {
   try {
-    const apiKey = await settings.get('LOVABLE_API_KEY');
+    const apiKey = await settings.get('GEMINI_API_KEY');
     if (!apiKey || typeof apiKey !== 'string') {
       res.status(500).json({
-        error: 'LOVABLE_API_KEY not configured. After uploading the app, run: npx devvit settings set LOVABLE_API_KEY',
+        error:
+          'GEMINI_API_KEY not configured. After `npx devvit upload`, run: npx devvit settings set GEMINI_API_KEY (or set it in the Reddit developer portal → your app → Settings).',
       });
       return;
     }
@@ -82,53 +83,55 @@ app.post('/api/generate-avatar', async (req, res) => {
     const imgBuf = Buffer.from(await imgResp.arrayBuffer());
     const imgB64 = imgBuf.toString('base64');
     const imgMime = imgResp.headers.get('content-type')?.split(';')[0] ?? 'image/png';
-    const imgDataUrl = `data:${imgMime};base64,${imgB64}`;
 
     const prompt = `Create a heroic cosmic warrior avatar based on this reference character.
 Keep the character's identity clearly recognizable (same body shape, colors, silhouette).
 Restyle as: ${style}.
 Full-body character, centered, dynamic pose, painterly sci-fi game art, vibrant colors, dark cosmic background with stars. No text, no watermark.`;
 
-    const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Lovable-API-Key': apiKey,
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType: imgMime, data: imgB64 } },
+              ],
+            },
+          ],
+          generationConfig: { responseModalities: ['IMAGE'] },
+        }),
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image',
-        modalities: ['image', 'text'],
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: imgDataUrl } },
-            ],
-          },
-        ],
-      }),
-    });
+    );
 
-    if (!aiRes.ok) {
-      const errBody = await aiRes.text();
-      console.error('[qokah] lovable ai error', aiRes.status, errBody.slice(0, 500));
-      res.status(aiRes.status).json({
-        error: `Lovable AI error (${aiRes.status}): ${errBody.slice(0, 300)}`,
+    if (!geminiRes.ok) {
+      const errBody = await geminiRes.text();
+      console.error('[qokah] gemini error', geminiRes.status, errBody.slice(0, 500));
+      res.status(geminiRes.status).json({
+        error: `Gemini error (${geminiRes.status}): ${errBody.slice(0, 300)}`,
       });
       return;
     }
 
-    const json = (await aiRes.json()) as {
-      choices?: Array<{ message?: { images?: Array<{ image_url?: { url?: string } }> } }>;
+    const json = (await geminiRes.json()) as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
+      }>;
     };
-    const url = json.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!url) {
-      res.status(500).json({ error: 'Lovable AI returned no image' });
+    const part = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
+    const outB64 = part?.inlineData?.data;
+    const outMime = part?.inlineData?.mimeType ?? 'image/png';
+    if (!outB64) {
+      res.status(500).json({ error: 'Gemini returned no image' });
       return;
     }
 
-    res.json({ dataUrl: url });
+    res.json({ dataUrl: `data:${outMime};base64,${outB64}` });
   } catch (err) {
     console.error('[qokah] /api/generate-avatar failed', err);
     res.status(500).json({ error: String(err) });

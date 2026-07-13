@@ -26,10 +26,10 @@
   },
   "settings": {
     "global": {
-      "LOVABLE_API_KEY": {
+      "GEMINI_API_KEY": {
         "type": "string",
-        "label": "Lovable AI Gateway API Key",
-        "helpText": "From your Lovable workspace. Used server-side to call the Lovable AI Gateway for avatar generation. Never exposed to the client.",
+        "label": "Google Gemini API Key",
+        "helpText": "From https://aistudio.google.com/apikey. Used server-side only, never exposed to the browser.",
         "isSecret": true
       }
     }
