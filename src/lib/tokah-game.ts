@@ -112,19 +112,33 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: aura, scale: 1.15, alpha: 0.4, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
     this.player.add(aura);
 
-    if (this.avatarKey && this.textures.exists(this.avatarKey)) {
+    const attachAvatar = () => {
+      if (!this.avatarKey) return;
       const img = this.add.image(0, 0, this.avatarKey);
       const scale = 120 / Math.max(img.width, img.height);
       img.setScale(scale);
-      // circular mask via graphics
-      const mask = this.add.graphics().fillStyle(0xffffff).fillCircle(startX, startY, 58);
-      mask.setVisible(false);
-      img.setMask(mask.createGeometryMask());
+      // Replace placeholder if present
+      if (this.playerSprite) {
+        this.player.remove(this.playerSprite, true);
+      }
       this.playerSprite = img;
-    } else {
-      this.playerSprite = this.add.rectangle(0, 0, 90, 110, 0x8b5cf6);
-    }
+      // insert above aura (index 1) so ring stays on top
+      this.player.addAt(img, 1);
+    };
+
+    // Placeholder while (or if) avatar isn't ready
+    this.playerSprite = this.add.rectangle(0, 0, 90, 110, 0x8b5cf6);
     this.player.add(this.playerSprite);
+
+    if (this.avatarKey) {
+      if (this.textures.exists(this.avatarKey) && this.textures.get(this.avatarKey).getSourceImage()) {
+        attachAvatar();
+      } else {
+        this.textures.once("addtexture-" + this.avatarKey, attachAvatar);
+        this.textures.once("onload", attachAvatar);
+      }
+    }
+
 
     // Ring border around avatar
     const ring = this.add.circle(0, 0, 60).setStrokeStyle(3, 0xa855f7, 1);
