@@ -155,22 +155,32 @@ class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keys = this.input.keyboard!.addKeys("W,A,S,D,SPACE,E") as typeof this.keys;
 
-    // HUD
+    // HUD panel background
+    this.add.rectangle(0, 0, WORLD_W, 56, 0x000000, 0.55).setOrigin(0, 0);
     this.hudText = this.add
-      .text(12, 10, "", { fontFamily: "monospace", fontSize: "14px", color: "#e2e8f0" })
-      .setScrollFactor(0);
+      .text(14, 8, "", { fontFamily: "monospace", fontSize: "16px", color: "#f8fafc", fontStyle: "bold" });
+
+    // Power meter bar (large, center-top)
+    const barX = WORLD_W / 2 - 140;
+    const barY = 32;
+    this.add.rectangle(barX, barY, 280, 16, 0x1e293b).setOrigin(0, 0).setStrokeStyle(2, 0xffffff, 0.4);
+    const powerBar = this.add.rectangle(barX + 2, barY + 2, 0, 12, 0xa855f7).setOrigin(0, 0);
+    this.data.set("powerBar", powerBar);
     this.powerText = this.add
-      .text(WORLD_W / 2, 20, "Hidden Power: 0%", {
+      .text(WORLD_W / 2, 12, "HIDDEN POWER 0% — fill to unlock boss & mystery power", {
         fontFamily: "monospace",
-        fontSize: "13px",
-        color: "#a78bfa",
+        fontSize: "12px",
+        color: "#e9d5ff",
+        fontStyle: "bold",
       })
       .setOrigin(0.5, 0);
     this.hintText = this.add
-      .text(WORLD_W / 2, WORLD_H - 20, "WASD/Arrows to move · SPACE to attack · Collect crystals to charge power", {
+      .text(WORLD_W / 2, WORLD_H - 16, "WASD/Arrows move · SPACE attack · Collect 💎 crystals to charge power", {
         fontFamily: "monospace",
-        fontSize: "12px",
-        color: "#94a3b8",
+        fontSize: "13px",
+        color: "#cbd5e1",
+        backgroundColor: "#000000aa",
+        padding: { x: 8, y: 4 },
       })
       .setOrigin(0.5, 1);
 
