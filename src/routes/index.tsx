@@ -222,14 +222,20 @@ function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
 }) {
   return (
     <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur">
+      <img
+        src={tokahLogo}
+        alt="TOKAH"
+        width={1152}
+        height={576}
+        className="mx-auto -mt-2 mb-2 h-auto w-full max-w-sm drop-shadow-[0_0_30px_rgba(217,70,239,0.35)]"
+      />
       {avatar ? (
         <img src={avatar} alt="Your Tokah avatar" className="mx-auto h-40 w-40 rounded-2xl border-2 border-fuchsia-500 object-cover shadow-[0_0_40px_rgba(217,70,239,0.4)]" />
       ) : (
         <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-2xl border-2 border-dashed border-white/20 text-5xl">👤</div>
       )}
-      <h2 className="mt-4 text-2xl font-bold">Become a cosmic warrior</h2>
-      <p className="mt-2 text-sm text-slate-400">
-        Upload a selfie → pick your planet → your AI avatar fights aliens, collects crystals, and unlocks a <span className="text-fuchsia-300">hidden power</span> only you carry into tomorrow's run.
+      <p className="mt-4 text-sm text-slate-400">
+        Snap a selfie → pick your planet → fight aliens, collect crystals, and unlock a <span className="text-fuchsia-300">hidden power</span> only you carry into tomorrow's run.
       </p>
       {powerAvailableToday && savedPower && (
         <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-200">
