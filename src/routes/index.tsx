@@ -175,7 +175,7 @@ function TokahApp() {
           <PlanetScreen
             selfie={selfie}
             onFile={onFile}
-            onSelfie={setSelfie}
+            onSelfie={(d) => { setSelfie(d); try { d ? localStorage.setItem(STORE.selfie, d) : localStorage.removeItem(STORE.selfie); } catch {} }}
             planet={planet}
             setPlanet={setPlanet}
             onGenerate={handleGenerate}
