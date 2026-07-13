@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { generateTokahAvatar } from "@/lib/avatar.functions";
 import type { GameResult } from "@/lib/tokah-game";
+import tokahLogo from "@/assets/tokah-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,6 +40,7 @@ type Screen = "intro" | "planet" | "generating" | "play" | "result";
 
 const STORE = {
   avatar: "tokah_avatar_v1",
+  selfie: "tokah_selfie_v1",
   planet: "tokah_planet_v1",
   power: "tokah_saved_power_v1",
   scores: "tokah_scores_v1",
@@ -75,14 +77,16 @@ function TokahApp() {
   useEffect(() => {
     try {
       const a = localStorage.getItem(STORE.avatar);
+      const s = localStorage.getItem(STORE.selfie);
       const p = localStorage.getItem(STORE.planet);
       if (a) setAvatar(a);
+      if (s) setSelfie(s);
       if (p) setPlanet(p);
       const saved = localStorage.getItem(STORE.power);
       if (saved) {
         const parsed = JSON.parse(saved) as { power: string; date: string };
         setSavedPower(parsed.power);
-        setPowerAvailableToday(parsed.date !== todayUtc()); // available if unlocked on a previous day
+        setPowerAvailableToday(parsed.date !== todayUtc());
       }
       setStreak(loadStreak());
       setLeaderboard(JSON.parse(localStorage.getItem(STORE.scores) ?? "[]"));
@@ -94,7 +98,11 @@ function TokahApp() {
     if (!f) return;
     if (f.size > 5 * 1024 * 1024) { setError("Image too large (max 5MB)"); return; }
     const reader = new FileReader();
-    reader.onload = () => setSelfie(reader.result as string);
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setSelfie(dataUrl);
+      try { localStorage.setItem(STORE.selfie, dataUrl); } catch { /* quota */ }
+    };
     reader.readAsDataURL(f);
   }
 
@@ -167,7 +175,7 @@ function TokahApp() {
           <PlanetScreen
             selfie={selfie}
             onFile={onFile}
-            onSelfie={setSelfie}
+            onSelfie={(d) => { setSelfie(d); try { d ? localStorage.setItem(STORE.selfie, d) : localStorage.removeItem(STORE.selfie); } catch {} }}
             planet={planet}
             setPlanet={setPlanet}
             onGenerate={handleGenerate}
@@ -179,7 +187,7 @@ function TokahApp() {
         {screen === "generating" && <GeneratingScreen />}
         {screen === "play" && (
           <PlayScreen
-            avatar={avatar}
+            avatar={selfie || avatar}
             savedPower={powerAvailableToday ? savedPower : null}
             onFinished={handleFinished}
           />
@@ -190,8 +198,18 @@ function TokahApp() {
             planet={planet}
             leaderboard={leaderboard}
             savedPower={savedPower}
+            avatar={selfie || avatar}
             onReplay={() => { setResult(null); setScreen("play"); }}
-            onNewAvatar={() => { setSelfie(null); setScreen("planet"); }}
+            onNewAvatar={() => {
+              setSelfie(null);
+              setAvatar(null);
+              try {
+                localStorage.removeItem(STORE.selfie);
+                localStorage.removeItem(STORE.avatar);
+              } catch { /* ignore */ }
+              setResult(null);
+              setScreen("planet");
+            }}
           />
         )}
       </div>
@@ -204,14 +222,20 @@ function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
 }) {
   return (
     <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur">
+      <img
+        src={tokahLogo}
+        alt="TOKAH"
+        width={1152}
+        height={576}
+        className="mx-auto -mt-2 mb-2 h-auto w-full max-w-sm drop-shadow-[0_0_30px_rgba(217,70,239,0.35)]"
+      />
       {avatar ? (
         <img src={avatar} alt="Your Tokah avatar" className="mx-auto h-40 w-40 rounded-2xl border-2 border-fuchsia-500 object-cover shadow-[0_0_40px_rgba(217,70,239,0.4)]" />
       ) : (
         <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-2xl border-2 border-dashed border-white/20 text-5xl">👤</div>
       )}
-      <h2 className="mt-4 text-2xl font-bold">Become a cosmic warrior</h2>
-      <p className="mt-2 text-sm text-slate-400">
-        Upload a selfie → pick your planet → your AI avatar fights aliens, collects crystals, and unlocks a <span className="text-fuchsia-300">hidden power</span> only you carry into tomorrow's run.
+      <p className="mt-4 text-sm text-slate-400">
+        Snap a selfie → pick your planet → fight aliens, collect crystals, and unlock a <span className="text-fuchsia-300">hidden power</span> only you carry into tomorrow's run.
       </p>
       {powerAvailableToday && savedPower && (
         <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-200">
@@ -369,13 +393,20 @@ function PlayScreen({ avatar, savedPower, onFinished }: {
   );
 }
 
-function ResultScreen({ result, planet, leaderboard, savedPower, onReplay, onNewAvatar }: {
+function ResultScreen({ result, planet, leaderboard, savedPower, avatar, onReplay, onNewAvatar }: {
   result: GameResult; planet: string; leaderboard: { name: string; score: number; date: string }[];
-  savedPower: string | null; onReplay: () => void; onNewAvatar: () => void;
+  savedPower: string | null; avatar: string | null; onReplay: () => void; onNewAvatar: () => void;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className={`rounded-2xl border p-6 text-center ${result.won ? "border-emerald-400/30 bg-emerald-500/10" : "border-red-400/30 bg-red-500/10"}`}>
+        {avatar && (
+          <img
+            src={avatar}
+            alt="Your avatar"
+            className={`mx-auto mb-3 h-24 w-24 rounded-full border-2 object-cover ${result.won ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.5)]" : "border-white/20"}`}
+          />
+        )}
         <div className="text-5xl">{result.won ? "🏆" : "💀"}</div>
         <h2 className="mt-2 text-2xl font-bold">{result.won ? "Boss Defeated!" : "You Fell"}</h2>
         <p className="mt-1 text-4xl font-black tabular-nums">{result.score}</p>
@@ -394,9 +425,13 @@ function ResultScreen({ result, planet, leaderboard, savedPower, onReplay, onNew
         {!result.won && savedPower && (
           <p className="mt-3 text-xs text-slate-400">Tip: use your saved power (<kbd className="rounded bg-black/30 px-1">E</kbd>) to survive longer.</p>
         )}
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <button onClick={onReplay} className="rounded-full bg-fuchsia-500 px-5 py-2 text-sm font-bold hover:bg-fuchsia-400">Play again</button>
-          <button onClick={onNewAvatar} className="rounded-full border border-white/20 px-5 py-2 text-sm font-bold hover:bg-white/10">New avatar</button>
+        <div className="mt-5 flex flex-col items-stretch gap-2">
+          <button onClick={onNewAvatar} className="rounded-full bg-gradient-to-r from-fuchsia-500 to-cyan-500 px-5 py-3 text-sm font-black text-white shadow-lg hover:opacity-90">
+            🔄 Restart with a new avatar
+          </button>
+          <div className="flex justify-center gap-2">
+            <button onClick={onReplay} className="rounded-full border border-white/20 px-5 py-2 text-xs font-bold hover:bg-white/10">Play again (same avatar)</button>
+          </div>
         </div>
       </div>
 
