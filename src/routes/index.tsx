@@ -224,7 +224,7 @@ function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
     <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur">
       <img
         src={tokahLogo}
-        alt="TOKAH"
+        alt="QOKAH"
         width={1152}
         height={576}
         className="mx-auto -mt-2 mb-2 h-auto w-full max-w-sm drop-shadow-[0_0_30px_rgba(217,70,239,0.35)]"
