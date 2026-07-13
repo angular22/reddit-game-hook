@@ -304,7 +304,7 @@ function PlayScreen({ avatar, savedPower, onFinished }: {
   avatar: string | null; savedPower: string | null; onFinished: (r: GameResult) => void;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const gameRef = useRef<Phaser.Game | null>(null);
+  const gameRef = useRef<{ destroy: (r: boolean) => void } | null>(null);
   const [ready, setReady] = useState(false);
 
   // Preload avatar image so Phaser has a decoded bitmap ready before scene create()
@@ -320,17 +320,28 @@ function PlayScreen({ avatar, savedPower, onFinished }: {
 
   useEffect(() => {
     if (!ready || !hostRef.current) return;
+    let disposed = false;
+    let localGame: { destroy: (r: boolean) => void } | null = null;
     const base64 = avatar?.startsWith("data:") ? avatar.split(",")[1] : avatar;
-    const g = createGame(hostRef.current, base64 ?? null, savedPower);
-    gameRef.current = g;
-    setTimeout(() => {
-      const scene = g.scene.getScene("game");
-      scene.events.once("finished", () => {
-        const res = g.registry.get("result") as GameResult;
-        onFinished(res);
-      });
-    }, 50);
-    return () => { g.destroy(true); gameRef.current = null; };
+    // Dynamic import — Phaser touches `window` on load, so keep it out of the SSR bundle
+    import("@/lib/tokah-game").then(({ createGame }) => {
+      if (disposed || !hostRef.current) return;
+      const g = createGame(hostRef.current, base64 ?? null, savedPower);
+      localGame = g as unknown as { destroy: (r: boolean) => void };
+      gameRef.current = localGame;
+      setTimeout(() => {
+        const scene = g.scene.getScene("game");
+        scene.events.once("finished", () => {
+          const res = g.registry.get("result") as GameResult;
+          onFinished(res);
+        });
+      }, 50);
+    });
+    return () => {
+      disposed = true;
+      localGame?.destroy(true);
+      gameRef.current = null;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
