@@ -104,25 +104,41 @@ class GameScene extends Phaser.Scene {
 
     // Player container
     const startX = 120;
-    const startY = WORLD_H - 120;
+    const startY = WORLD_H - 130;
     this.player = this.add.container(startX, startY);
+
+    // Glowing aura behind avatar
+    const aura = this.add.circle(0, 0, 70, 0xa855f7, 0.25);
+    this.tweens.add({ targets: aura, scale: 1.15, alpha: 0.4, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    this.player.add(aura);
+
     if (this.avatarKey && this.textures.exists(this.avatarKey)) {
       const img = this.add.image(0, 0, this.avatarKey);
-      const scale = 72 / Math.max(img.width, img.height);
+      const scale = 120 / Math.max(img.width, img.height);
       img.setScale(scale);
+      // circular mask via graphics
+      const mask = this.add.graphics().fillStyle(0xffffff).fillCircle(startX, startY, 58);
+      mask.setVisible(false);
+      img.setMask(mask.createGeometryMask());
       this.playerSprite = img;
     } else {
-      this.playerSprite = this.add.rectangle(0, 0, 40, 60, 0x8b5cf6);
+      this.playerSprite = this.add.rectangle(0, 0, 90, 110, 0x8b5cf6);
     }
     this.player.add(this.playerSprite);
-    this.sword = this.add.rectangle(30, 0, 44, 6, 0xfff2a8).setOrigin(0, 0.5);
+
+    // Ring border around avatar
+    const ring = this.add.circle(0, 0, 60).setStrokeStyle(3, 0xa855f7, 1);
+    this.player.add(ring);
+    this.data.set("ring", ring);
+
+    this.sword = this.add.rectangle(60, 10, 60, 8, 0xfff2a8).setOrigin(0, 0.5);
     this.sword.setVisible(false);
     this.player.add(this.sword);
 
     this.physics.add.existing(this.player);
     this.playerBody = this.player.body as Phaser.Physics.Arcade.Body;
-    this.playerBody.setSize(40, 60);
-    this.playerBody.setOffset(-20, -30);
+    this.playerBody.setSize(90, 110);
+    this.playerBody.setOffset(-45, -55);
     this.playerBody.setCollideWorldBounds(true);
     this.playerBody.setGravityY(900);
 
