@@ -154,7 +154,8 @@ app.post('/internal/menu/post-create', async (_req, res) => {
   }
 });
 
-const port = Number(process.env.WEBBIT_PORT ?? process.env.PORT ?? 3000);
-app.listen(port, () => {
+const server = createServer(app);
+const port = getServerPort();
+server.listen(port, () => {
   console.log(`[qokah] server listening on :${port}`);
 });
