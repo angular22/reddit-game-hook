@@ -306,30 +306,53 @@ function PlayScreen({ avatar, savedPower, onFinished }: {
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
+  const [ready, setReady] = useState(false);
+
+  // Preload avatar image so Phaser has a decoded bitmap ready before scene create()
+  useEffect(() => {
+    let cancelled = false;
+    if (!avatar) { setReady(true); return; }
+    const img = new Image();
+    img.onload = () => { if (!cancelled) setReady(true); };
+    img.onerror = () => { if (!cancelled) setReady(true); };
+    img.src = avatar;
+    return () => { cancelled = true; };
+  }, [avatar]);
 
   useEffect(() => {
-    if (!hostRef.current) return;
+    if (!ready || !hostRef.current) return;
     const base64 = avatar?.startsWith("data:") ? avatar.split(",")[1] : avatar;
     const g = createGame(hostRef.current, base64 ?? null, savedPower);
     gameRef.current = g;
-    const onReady = () => {
+    setTimeout(() => {
       const scene = g.scene.getScene("game");
       scene.events.once("finished", () => {
         const res = g.registry.get("result") as GameResult;
         onFinished(res);
       });
-    };
-    // scene starts synchronously via createGame, but events not ready until next tick
-    setTimeout(onReady, 50);
+    }, 50);
     return () => { g.destroy(true); gameRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ready]);
 
   return (
     <div>
-      <div ref={hostRef} className="mx-auto overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl" style={{ maxWidth: 960, aspectRatio: "960/540" }} />
+      <div className="relative mx-auto" style={{ maxWidth: 960 }}>
+        <div ref={hostRef} className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl" style={{ aspectRatio: "960/540" }} />
+        {avatar && (
+          <div className="absolute right-3 top-3 flex items-center gap-2 rounded-full border border-white/20 bg-black/60 py-1 pl-1 pr-3 backdrop-blur">
+            <img src={avatar} alt="you" className="h-8 w-8 rounded-full border border-fuchsia-400 object-cover" />
+            <span className="text-xs font-bold text-fuchsia-200">You</span>
+          </div>
+        )}
+      </div>
+      <div className="mx-auto mt-3 grid max-w-2xl gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-center text-xs text-slate-300 sm:grid-cols-3">
+        <div>⚔️ <b>SPACE</b> attack</div>
+        <div>🕹 <b>WASD / Arrows</b> move + jump</div>
+        <div>💎 Collect crystals → fill <b className="text-fuchsia-300">Hidden Power</b> to 100% → boss spawns → win to unlock a power</div>
+      </div>
       {savedPower && (
-        <p className="mt-2 text-center text-xs text-amber-300">⚡ Press E to unleash yesterday's <b>{savedPower}</b> (one-time use)</p>
+        <p className="mt-2 text-center text-xs text-amber-300">⚡ Press <kbd className="rounded bg-black/30 px-1">E</kbd> to unleash yesterday's <b>{savedPower}</b> (one-time use)</p>
       )}
     </div>
   );
