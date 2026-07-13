@@ -34,6 +34,17 @@ npm run login              # one-time Reddit login
 npm run dev -- qokah_dev   # or your test subreddit
 ```
 
+For AI avatar generation, set `GEMINI_API_KEY` in your shell before starting Devvit.
+
+PowerShell:
+
+```powershell
+$env:GEMINI_API_KEY="your_google_gemini_api_key_here"
+npm run dev -- qokah_dev
+```
+
+Do not run `npx devvit settings set`; this project no longer uses Devvit app settings.
+
 Open the playtest URL Devvit prints (e.g. `https://www.reddit.com/r/qokah_dev/?playtest=qokah`).
 
 ## Deploy

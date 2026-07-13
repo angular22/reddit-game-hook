@@ -1,4 +1,4 @@
-import { context, reddit, settings } from '@devvit/web/server';
+import { context, reddit } from '@devvit/web/server';
 import { createServer } from '@devvit/web/server';
 
 const app = createServer();
@@ -56,14 +56,14 @@ app.post('/api/generate-avatar', async (req, res) => {
     const imgB64 = match[2];
     const fallbackDataUrl = imageDataUrl;
 
-    const apiKey = await settings.get('qokahGeminiApiKey');
+    const apiKey = process.env.GEMINI_API_KEY ?? process.env.QOKAH_GEMINI_API_KEY;
     if (!apiKey || typeof apiKey !== 'string') {
       // AI not configured — return the selfie so the game is still playable.
       res.json({
         dataUrl: fallbackDataUrl,
         fallback: true,
         error:
-          'qokahGeminiApiKey not configured. Run: npx devvit settings set qokahGeminiApiKey',
+          'Gemini API key not configured. Set GEMINI_API_KEY before running the Devvit server.',
       });
       return;
     }
