@@ -118,7 +118,18 @@ function TokahApp() {
       localStorage.setItem(STORE.planet, planet);
       setScreen("play");
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      if (/busy|rate-limit|rate limit|429|503|quota|RESOURCE_EXHAUSTED/i.test(message)) {
+        setAvatar(selfie);
+        try {
+          localStorage.setItem(STORE.avatar, selfie);
+          localStorage.setItem(STORE.planet, planet);
+        } catch { /* quota */ }
+        setError(null);
+        setScreen("play");
+        return;
+      }
+      setError(message);
       setScreen("planet");
     }
   }
