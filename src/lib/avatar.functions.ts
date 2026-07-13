@@ -19,11 +19,15 @@ const PLANET_STYLES: Record<string, string> = {
   Sun: "solar champion wreathed in golden plasma, radiant crown, molten sword",
 };
 
+export type AvatarResult =
+  | { ok: true; imageBase64: string }
+  | { ok: false; fallback: true; reason: string };
+
 export const generateTokahAvatar = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => Input.parse(raw))
-  .handler(async ({ data }): Promise<{ imageBase64: string }> => {
+  .handler(async ({ data }): Promise<AvatarResult> => {
     const key = process.env.GEMINI_API_KEY;
-    if (!key) throw new Error("Missing GEMINI_API_KEY on server");
+    if (!key) return { ok: false, fallback: true, reason: "Missing GEMINI_API_KEY" };
 
     const style = PLANET_STYLES[data.planet] ?? PLANET_STYLES.Pluto;
     const prompt = `Create a heroic cosmic warrior character illustration for the planet ${data.planet}.
@@ -32,47 +36,39 @@ CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of 
 
 Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask.`;
 
-    // Parse data URL → mime + base64
     const match = /^data:([^;]+);base64,(.+)$/.exec(data.imageDataUrl);
-    if (!match) throw new Error("Invalid image data URL");
+    if (!match) return { ok: false, fallback: true, reason: "Invalid image data URL" };
     const mime = match[1];
     const b64 = match[2];
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(key)}`;
     const body = JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: mime, data: b64 } },
-          ],
-        },
-      ],
+      contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: mime, data: b64 } }] }],
       generationConfig: { responseModalities: ["IMAGE"] },
     });
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+    } catch (e) {
+      return { ok: false, fallback: true, reason: `Network error: ${(e as Error).message}` };
+    }
 
     if (!res.ok) {
-      const errBody = await res.text();
-      if (res.status === 429 || res.status === 503) {
-        throw new Error("AI avatar service is busy. Your selfie can be used in-game instead.");
-      }
-      throw new Error(`Gemini error (${res.status}): ${errBody.slice(0, 200)}`);
+      const errBody = await res.text().catch(() => "");
+      return {
+        ok: false,
+        fallback: true,
+        reason: res.status === 429 || res.status === 503
+          ? "AI busy (rate-limited). Using your selfie."
+          : `Gemini error (${res.status}): ${errBody.slice(0, 160)}`,
+      };
     }
 
     const json = (await res.json()) as {
-      candidates?: Array<{
-        content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
-      }>;
+      candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> } }>;
     };
-    const part = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
-    const outB64 = part?.inlineData?.data;
-    if (!outB64) throw new Error("No image returned from Gemini");
-    return { imageBase64: outB64 };
+    const outB64 = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData?.data;
+    if (!outB64) return { ok: false, fallback: true, reason: "No image returned from Gemini" };
+    return { ok: true, imageBase64: outB64 };
   });
