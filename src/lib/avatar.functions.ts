@@ -26,7 +26,11 @@ export const generateTokahAvatar = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
     const style = PLANET_STYLES[data.planet] ?? PLANET_STYLES.Pluto;
-    const prompt = `Transform the person in this photo into a heroic cosmic warrior for the planet ${data.planet}. Style: ${style}. Full body character portrait, clean centered composition, dramatic sci-fi fantasy game art, painterly digital illustration, vibrant colors, dynamic pose holding a glowing sword. Keep facial likeness recognizable. Solid dark cosmic background with stars.`;
+    const prompt = `Create a heroic cosmic warrior character illustration for the planet ${data.planet}.
+
+CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of the person in the reference photo — same face shape, same eyes, same nose, same mouth, same skin tone, same hair, same facial hair, same age, same gender, same ethnicity. Do NOT stylize, cartoonify, idealize, beautify, or change the face in any way. Treat the face as a direct photo-composite of the reference onto the warrior body. The face must be clearly visible, unobstructed by helmets or masks, and instantly recognizable as the same person.
+
+Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -35,7 +39,7 @@ export const generateTokahAvatar = createServerFn({ method: "POST" })
         "Lovable-API-Key": key,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
+        model: "google/gemini-3.1-flash-image",
         modalities: ["image", "text"],
         messages: [
           {
