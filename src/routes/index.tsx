@@ -187,7 +187,7 @@ function TokahApp() {
         {screen === "generating" && <GeneratingScreen />}
         {screen === "play" && (
           <PlayScreen
-            avatar={selfie || avatar}
+            avatar={avatar}
             savedPower={powerAvailableToday ? savedPower : null}
             onFinished={handleFinished}
           />
@@ -198,7 +198,7 @@ function TokahApp() {
             planet={planet}
             leaderboard={leaderboard}
             savedPower={savedPower}
-            avatar={selfie || avatar}
+            avatar={avatar}
             onReplay={() => { setResult(null); setScreen("play"); }}
             onNewAvatar={() => {
               setSelfie(null);
