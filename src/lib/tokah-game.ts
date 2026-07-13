@@ -347,10 +347,6 @@ class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: crown, y: -122, yoyo: true, duration: 700, repeat: -1, ease: "Sine.easeInOut" });
       // Grow the avatar (scale player container up)
       this.tweens.add({ targets: this.player, scale: 2.3, duration: 600, ease: "Back.out" });
-      // Lift player so the enlarged avatar reaches up to just below the banner without touching it
-      this.playerBody.setGravityY(0);
-      this.playerBody.setVelocity(0, 0);
-      this.tweens.add({ targets: this.player, y: WORLD_H - 200, duration: 600, ease: "Sine.out" });
       // Screen flash
       const flash = this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0xfbbf24, 0.6);
       this.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
