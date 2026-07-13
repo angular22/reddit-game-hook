@@ -154,7 +154,7 @@ function TokahApp() {
       <div className="mx-auto max-w-4xl px-4 py-8">
         <header className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-black tracking-tight">
-            <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">TOKAH</span>
+            <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">QOKAH</span>
           </h1>
           <div className="flex gap-4 text-xs text-slate-400">
             <span>🔥 {streak.count} day streak</span>
