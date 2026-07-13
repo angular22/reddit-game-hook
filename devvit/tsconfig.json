@@ -1,9 +1,21 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tools/tsconfig.client.json" },
-    { "path": "./tools/tsconfig.server.json" },
-    { "path": "./tools/tsconfig.shared.json" },
-    { "path": "./tools/tsconfig.vite.json" }
-  ]
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["src/shared/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
 }
