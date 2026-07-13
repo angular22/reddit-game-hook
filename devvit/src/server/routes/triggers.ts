@@ -1,14 +1,13 @@
 import { Hono } from 'hono';
-import type { OnAppInstallRequest, TriggerResponse } from '@devvit/web/shared';
+import type { TriggerResponse } from '@devvit/web/shared';
 import { context } from '@devvit/web/server';
 import { createPost } from './core/post';
 
 export const triggers = new Hono();
 
-triggers.post('/on-app-install', async (c) => {
+triggers.post('/on-app-install', async (_c) => {
   try {
     const post = await createPost();
-    void (await c.req.json()) as OnAppInstallRequest;
 
     return c.json(
       {
