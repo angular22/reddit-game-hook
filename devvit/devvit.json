@@ -23,5 +23,15 @@
         "endpoint": "/internal/menu/post-create"
       }
     ]
+  },
+  "settings": {
+    "global": {
+      "GEMINI_API_KEY": {
+        "type": "string",
+        "label": "Google Gemini API Key",
+        "helpText": "API key from https://aistudio.google.com/apikey — used server-side for AI avatar generation. Never exposed to the client.",
+        "isSecret": true
+      }
+    }
   }
 }
