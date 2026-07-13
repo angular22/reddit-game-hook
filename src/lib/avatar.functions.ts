@@ -38,30 +38,46 @@ Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. F
     const mime = match[1];
     const b64 = match[2];
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(key)}`,
-      {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(key)}`;
+    const body = JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: mime, data: b64 } },
+          ],
+        },
+      ],
+      generationConfig: { responseModalities: ["IMAGE"] },
+    });
+
+    let res!: Response;
+    let lastErr = "";
+    for (let attempt = 0; attempt < 4; attempt++) {
+      res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: prompt },
-                { inlineData: { mimeType: mime, data: b64 } },
-              ],
-            },
-          ],
-          generationConfig: { responseModalities: ["IMAGE"] },
-        }),
-      },
-    );
+        body,
+      });
+      if (res.ok) break;
+      lastErr = await res.text();
+      if (res.status === 429 || res.status === 503) {
+        const retryAfter = Number(res.headers.get("retry-after"));
+        const wait = Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter * 1000
+          : ([2000, 5000, 10000, 20000][attempt] ?? 20000);
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+      break;
+    }
 
     if (!res.ok) {
-      const t = await res.text();
-      if (res.status === 429) throw new Error("Rate limited. Try again in a moment.");
-      throw new Error(`Gemini error (${res.status}): ${t.slice(0, 200)}`);
+      if (res.status === 429) {
+        throw new Error("Gemini is rate-limiting free-tier requests. Wait ~30–60s and try again.");
+      }
+      throw new Error(`Gemini error (${res.status}): ${lastErr.slice(0, 200)}`);
     }
 
     const json = (await res.json()) as {
