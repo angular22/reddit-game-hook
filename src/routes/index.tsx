@@ -1,437 +1,388 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { getDailyQuiz, type TriviaQuestion } from "@/lib/trivia.functions";
+import { useEffect, useRef, useState } from "react";
+import { generateTokahAvatar } from "@/lib/avatar.functions";
+import { createGame, type GameResult } from "@/lib/tokah-game";
+import type Phaser from "phaser";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Trivia Night — Daily Quiz" },
+      { title: "Tokah — Your Avatar Creates History" },
       {
         name: "description",
         content:
-          "A fresh 10-question trivia quiz every day. Test your streak across movies, gaming, science, and general knowledge.",
+          "Upload a selfie, pick your planet, and become a cosmic warrior. Fight aliens on Pluto, unlock hidden powers, and come back tomorrow to use them.",
       },
-      { property: "og:title", content: "Trivia Night — Daily Quiz" },
-      {
-        property: "og:description",
-        content: "10 fresh trivia questions daily. Build your streak.",
-      },
+      { property: "og:title", content: "Tokah — Your Avatar Creates History" },
+      { property: "og:description", content: "Selfie → AI avatar → Phaser boss fight. Unlock a hidden power, return tomorrow." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: Index,
+  component: TokahApp,
 });
 
-type StoredProgress = {
-  date: string;
-  answers: (number | null)[];
-  finished: boolean;
-  score: number;
+const PLANETS = [
+  { name: "Mercury", color: "#a89078", emoji: "☿" },
+  { name: "Venus", color: "#e8b562", emoji: "♀" },
+  { name: "Earth", color: "#4b9cd3", emoji: "🌍" },
+  { name: "Mars", color: "#c1440e", emoji: "♂" },
+  { name: "Jupiter", color: "#d8a870", emoji: "♃" },
+  { name: "Saturn", color: "#e0c992", emoji: "♄" },
+  { name: "Uranus", color: "#7fdbe0", emoji: "♅" },
+  { name: "Neptune", color: "#3b5ff0", emoji: "♆" },
+  { name: "Pluto", color: "#8b5cf6", emoji: "🪐", featured: true },
+  { name: "Sun", color: "#fbbf24", emoji: "☀" },
+];
+
+type Screen = "intro" | "planet" | "generating" | "play" | "result";
+
+const STORE = {
+  avatar: "tokah_avatar_v1",
+  planet: "tokah_planet_v1",
+  power: "tokah_saved_power_v1",
+  scores: "tokah_scores_v1",
+  streak: "tokah_streak_v1",
 };
 
-type Streak = {
-  count: number;
-  lastPlayed: string;
-  bestScore: number;
-};
+type Streak = { count: number; lastPlayed: string; best: number };
 
-const STORAGE_KEY = "trivia_night_progress_v1";
-const STREAK_KEY = "trivia_night_streak_v1";
-const QUESTION_TIME = 20;
+function todayUtc() { return new Date().toISOString().slice(0, 10); }
+function yesterday(d: string) {
+  const x = new Date(d + "T00:00:00Z");
+  x.setUTCDate(x.getUTCDate() - 1);
+  return x.toISOString().slice(0, 10);
+}
 
 function loadStreak(): Streak {
-  if (typeof window === "undefined") return { count: 0, lastPlayed: "", bestScore: 0 };
-  try {
-    return (
-      JSON.parse(localStorage.getItem(STREAK_KEY) ?? "") || {
-        count: 0,
-        lastPlayed: "",
-        bestScore: 0,
+  try { return JSON.parse(localStorage.getItem(STORE.streak) ?? "") || { count: 0, lastPlayed: "", best: 0 }; }
+  catch { return { count: 0, lastPlayed: "", best: 0 }; }
+}
+
+function TokahApp() {
+  const [screen, setScreen] = useState<Screen>("intro");
+  const [selfie, setSelfie] = useState<string | null>(null);
+  const [planet, setPlanet] = useState<string>("Pluto");
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [savedPower, setSavedPower] = useState<string | null>(null);
+  const [powerAvailableToday, setPowerAvailableToday] = useState(false);
+  const [result, setResult] = useState<GameResult | null>(null);
+  const [streak, setStreak] = useState<Streak>({ count: 0, lastPlayed: "", best: 0 });
+  const [leaderboard, setLeaderboard] = useState<{ name: string; score: number; date: string }[]>([]);
+  const generateAvatar = useServerFn(generateTokahAvatar);
+
+  useEffect(() => {
+    try {
+      const a = localStorage.getItem(STORE.avatar);
+      const p = localStorage.getItem(STORE.planet);
+      if (a) setAvatar(a);
+      if (p) setPlanet(p);
+      const saved = localStorage.getItem(STORE.power);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { power: string; date: string };
+        setSavedPower(parsed.power);
+        setPowerAvailableToday(parsed.date !== todayUtc()); // available if unlocked on a previous day
       }
-    );
-  } catch {
-    return { count: 0, lastPlayed: "", bestScore: 0 };
+      setStreak(loadStreak());
+      setLeaderboard(JSON.parse(localStorage.getItem(STORE.scores) ?? "[]"));
+    } catch { /* ignore */ }
+  }, []);
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { setError("Image too large (max 5MB)"); return; }
+    const reader = new FileReader();
+    reader.onload = () => setSelfie(reader.result as string);
+    reader.readAsDataURL(f);
   }
-}
 
-function yesterday(date: string): string {
-  const d = new Date(date + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
+  async function handleGenerate() {
+    if (!selfie) return;
+    setScreen("generating");
+    setError(null);
+    try {
+      const r = await generateAvatar({ data: { imageDataUrl: selfie, planet } });
+      const dataUrl = `data:image/png;base64,${r.imageBase64}`;
+      setAvatar(dataUrl);
+      localStorage.setItem(STORE.avatar, dataUrl);
+      localStorage.setItem(STORE.planet, planet);
+      setScreen("play");
+    } catch (e) {
+      setError((e as Error).message);
+      setScreen("planet");
+    }
+  }
 
-function Index() {
-  const fetchQuiz = useServerFn(getDailyQuiz);
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["daily-quiz"],
-    queryFn: () => fetchQuiz(),
-    staleTime: 1000 * 60 * 30,
-    retry: 1,
-  });
+  function handleFinished(r: GameResult) {
+    setResult(r);
+    // Save leaderboard
+    const entry = { name: `${planet} Warrior`, score: r.score, date: todayUtc() };
+    const next = [...leaderboard, entry].sort((a, b) => b.score - a.score).slice(0, 10);
+    setLeaderboard(next);
+    localStorage.setItem(STORE.scores, JSON.stringify(next));
+    // Save hidden power for tomorrow
+    if (r.powerUnlocked && r.won) {
+      const payload = { power: r.powerUnlocked, date: todayUtc() };
+      localStorage.setItem(STORE.power, JSON.stringify(payload));
+      setSavedPower(r.powerUnlocked);
+      setPowerAvailableToday(false);
+    }
+    // Streak
+    const prev = loadStreak();
+    const t = todayUtc();
+    let c = 1;
+    if (prev.lastPlayed === t) c = prev.count;
+    else if (prev.lastPlayed === yesterday(t)) c = prev.count + 1;
+    const s = { count: c, lastPlayed: t, best: Math.max(prev.best, r.score) };
+    localStorage.setItem(STORE.streak, JSON.stringify(s));
+    setStreak(s);
+    setScreen("result");
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-slate-100">
-      <div className="mx-auto max-w-2xl px-4 py-10">
-        <header className="mb-8 text-center">
-          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
-            🎯 Trivia Night
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,#1e1b4b_0%,#020617_60%)] text-slate-100">
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <header className="mb-6 flex items-center justify-between">
+          <h1 className="text-3xl font-black tracking-tight">
+            <span className="bg-gradient-to-r from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">TOKAH</span>
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Fresh 10-question quiz every day. Same questions for everyone.
-          </p>
+          <div className="flex gap-4 text-xs text-slate-400">
+            <span>🔥 {streak.count} day streak</span>
+            <span>⭐ {streak.best} best</span>
+          </div>
         </header>
+        <p className="mb-8 text-center text-sm text-slate-400">Your Avatar Creates History.</p>
 
-        {isLoading && <LoadingCard />}
-        {error && (
-          <ErrorCard message={(error as Error).message} onRetry={() => refetch()} />
+        {screen === "intro" && (
+          <IntroScreen
+            onNext={() => setScreen("planet")}
+            avatar={avatar}
+            savedPower={savedPower}
+            powerAvailableToday={powerAvailableToday}
+          />
         )}
-        {data && <Quiz date={data.date} questions={data.questions} />}
+        {screen === "planet" && (
+          <PlanetScreen
+            selfie={selfie}
+            onFile={onFile}
+            planet={planet}
+            setPlanet={setPlanet}
+            onGenerate={handleGenerate}
+            error={error}
+            existingAvatar={avatar}
+            onSkipGenerate={() => avatar && setScreen("play")}
+          />
+        )}
+        {screen === "generating" && <GeneratingScreen />}
+        {screen === "play" && (
+          <PlayScreen
+            avatar={avatar}
+            savedPower={powerAvailableToday ? savedPower : null}
+            onFinished={handleFinished}
+          />
+        )}
+        {screen === "result" && result && (
+          <ResultScreen
+            result={result}
+            planet={planet}
+            leaderboard={leaderboard}
+            savedPower={savedPower}
+            onReplay={() => { setResult(null); setScreen("play"); }}
+            onNewAvatar={() => { setSelfie(null); setScreen("planet"); }}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function LoadingCard() {
+function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
+  onNext: () => void; avatar: string | null; savedPower: string | null; powerAvailableToday: boolean;
+}) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur">
-      <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-400 border-t-transparent" />
-      <p className="mt-4 text-slate-300">Loading today's quiz…</p>
-    </div>
-  );
-}
-
-function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-center">
-      <p className="text-red-200">Couldn't load the quiz.</p>
-      <p className="mt-1 text-xs text-red-300/70">{message}</p>
+    <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur">
+      {avatar ? (
+        <img src={avatar} alt="Your Tokah avatar" className="mx-auto h-40 w-40 rounded-2xl border-2 border-fuchsia-500 object-cover shadow-[0_0_40px_rgba(217,70,239,0.4)]" />
+      ) : (
+        <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-2xl border-2 border-dashed border-white/20 text-5xl">👤</div>
+      )}
+      <h2 className="mt-4 text-2xl font-bold">Become a cosmic warrior</h2>
+      <p className="mt-2 text-sm text-slate-400">
+        Upload a selfie → pick your planet → your AI avatar fights aliens, collects crystals, and unlocks a <span className="text-fuchsia-300">hidden power</span> only you carry into tomorrow's run.
+      </p>
+      {powerAvailableToday && savedPower && (
+        <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+          ⚡ You unlocked <b>{savedPower}</b> yesterday. Press <kbd className="rounded bg-black/30 px-1.5 py-0.5">E</kbd> in-game to use it once today.
+        </div>
+      )}
       <button
-        onClick={onRetry}
-        className="mt-4 rounded-full bg-red-500 px-5 py-2 text-sm font-semibold text-white hover:bg-red-400"
+        onClick={onNext}
+        className="mt-6 rounded-full bg-gradient-to-r from-fuchsia-500 to-cyan-500 px-8 py-3 font-bold text-white shadow-lg hover:opacity-90"
       >
-        Try again
+        {avatar ? "Continue" : "Begin"}
       </button>
     </div>
   );
 }
 
-function Quiz({ date, questions }: { date: string; questions: TriviaQuestion[] }) {
-  const [progress, setProgress] = useState<StoredProgress>(() => ({
-    date,
-    answers: Array(questions.length).fill(null),
-    finished: false,
-    score: 0,
-  }));
-  const [current, setCurrent] = useState(0);
-  const [locked, setLocked] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
-  const [streak, setStreak] = useState<Streak>({ count: 0, lastPlayed: "", bestScore: 0 });
-
-  // hydrate from localStorage after mount
-  useEffect(() => {
-    setStreak(loadStreak());
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const p: StoredProgress = JSON.parse(raw);
-        if (p.date === date) {
-          setProgress(p);
-          if (p.finished) return;
-          const nextIdx = p.answers.findIndex((a) => a === null);
-          setCurrent(nextIdx === -1 ? questions.length - 1 : nextIdx);
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [date, questions.length]);
-
-  // persist
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  }, [progress]);
-
-  // timer
-  useEffect(() => {
-    if (progress.finished || locked) return;
-    setTimeLeft(QUESTION_TIME);
-    const id = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(id);
-          handleAnswer(-1);
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, progress.finished]);
-
-  function handleAnswer(choiceIdx: number) {
-    if (locked || progress.finished) return;
-    setLocked(true);
-    const q = questions[current];
-    const correct = choiceIdx === q.answer;
-    const nextAnswers = [...progress.answers];
-    nextAnswers[current] = choiceIdx;
-    const nextScore = progress.score + (correct ? 1 : 0);
-
-    setTimeout(() => {
-      const isLast = current === questions.length - 1;
-      if (isLast) {
-        finish(nextAnswers, nextScore);
-      } else {
-        setProgress({ ...progress, answers: nextAnswers, score: nextScore });
-        setCurrent(current + 1);
-        setLocked(false);
-      }
-    }, 1200);
-  }
-
-  function finish(answers: (number | null)[], score: number) {
-    const finished: StoredProgress = { date, answers, score, finished: true };
-    setProgress(finished);
-    setLocked(false);
-
-    // Update streak
-    const prev = loadStreak();
-    let newCount = 1;
-    if (prev.lastPlayed === date) newCount = prev.count; // already counted
-    else if (prev.lastPlayed === yesterday(date)) newCount = prev.count + 1;
-    const next: Streak = {
-      count: newCount,
-      lastPlayed: date,
-      bestScore: Math.max(prev.bestScore, score),
-    };
-    localStorage.setItem(STREAK_KEY, JSON.stringify(next));
-    setStreak(next);
-  }
-
-  function reset() {
-    const fresh: StoredProgress = {
-      date,
-      answers: Array(questions.length).fill(null),
-      finished: false,
-      score: 0,
-    };
-    setProgress(fresh);
-    setCurrent(0);
-    setLocked(false);
-  }
-
-  if (progress.finished) {
-    return (
-      <Results
-        score={progress.score}
-        total={questions.length}
-        questions={questions}
-        answers={progress.answers}
-        streak={streak}
-        date={date}
-        onReplay={reset}
-      />
-    );
-  }
-
-  const q = questions[current];
-  const answered = progress.answers[current];
-  const showResult = locked;
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur">
-      <div className="mb-4 flex items-center justify-between text-xs">
-        <span className="font-mono text-slate-400">
-          Q {current + 1} / {questions.length}
-        </span>
-        <span className="rounded-full bg-indigo-500/20 px-3 py-1 font-semibold text-indigo-200">
-          {q.category}
-        </span>
-        <TimerRing seconds={timeLeft} max={QUESTION_TIME} />
-      </div>
-
-      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full bg-gradient-to-r from-indigo-400 to-purple-400 transition-all"
-          style={{ width: `${((current + 1) / questions.length) * 100}%` }}
-        />
-      </div>
-
-      <h2 className="mb-6 text-xl font-semibold leading-snug sm:text-2xl">
-        {q.question}
-      </h2>
-
-      <div className="grid gap-3">
-        {q.choices.map((choice, i) => {
-          const isSelected = answered === i;
-          const isCorrect = i === q.answer;
-          let style =
-            "border-white/10 bg-white/5 hover:border-indigo-400 hover:bg-indigo-500/10";
-          if (showResult) {
-            if (isCorrect)
-              style = "border-emerald-400 bg-emerald-500/20 text-emerald-100";
-            else if (isSelected)
-              style = "border-red-400 bg-red-500/20 text-red-100";
-            else style = "border-white/5 bg-white/[0.02] opacity-50";
-          }
-          return (
-            <button
-              key={i}
-              disabled={locked}
-              onClick={() => handleAnswer(i)}
-              className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${style}`}
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 font-mono text-sm font-bold">
-                {String.fromCharCode(65 + i)}
-              </span>
-              <span className="text-sm sm:text-base">{choice}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 flex items-center justify-between text-xs text-slate-400">
-        <span>Score: {progress.score}</span>
-        <span>🔥 Streak: {streak.count}</span>
-      </div>
-    </div>
-  );
-}
-
-function TimerRing({ seconds, max }: { seconds: number; max: number }) {
-  const pct = seconds / max;
-  const color =
-    pct > 0.5 ? "text-emerald-400" : pct > 0.25 ? "text-amber-400" : "text-red-400";
-  return (
-    <span
-      className={`font-mono text-base font-bold tabular-nums ${color}`}
-      aria-label="time remaining"
-    >
-      {seconds}s
-    </span>
-  );
-}
-
-function Results({
-  score,
-  total,
-  questions,
-  answers,
-  streak,
-  date,
-  onReplay,
+function PlanetScreen({
+  selfie, onFile, planet, setPlanet, onGenerate, error, existingAvatar, onSkipGenerate,
 }: {
-  score: number;
-  total: number;
-  questions: TriviaQuestion[];
-  answers: (number | null)[];
-  streak: Streak;
-  date: string;
-  onReplay: () => void;
+  selfie: string | null;
+  onFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  planet: string;
+  setPlanet: (p: string) => void;
+  onGenerate: () => void;
+  error: string | null;
+  existingAvatar: string | null;
+  onSkipGenerate: () => void;
 }) {
-  const pct = Math.round((score / total) * 100);
-  const grade = useMemo(() => {
-    if (pct === 100) return { emoji: "🏆", label: "Perfect!" };
-    if (pct >= 80) return { emoji: "🎉", label: "Brilliant" };
-    if (pct >= 60) return { emoji: "👏", label: "Solid" };
-    if (pct >= 40) return { emoji: "🙂", label: "Not bad" };
-    return { emoji: "😅", label: "Try again tomorrow" };
-  }, [pct]);
-
-  const [copied, setCopied] = useState(false);
-  function share() {
-    const grid = answers
-      .map((a, i) => (a === questions[i].answer ? "🟩" : "🟥"))
-      .join("");
-    const text = `Trivia Night ${date}\n${score}/${total} ${grid}\n🔥 Streak: ${streak.count}`;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-      <div className="text-center">
-        <div className="text-6xl">{grade.emoji}</div>
-        <h2 className="mt-2 text-2xl font-bold">{grade.label}</h2>
-        <p className="mt-1 text-5xl font-black tabular-nums">
-          {score}
-          <span className="text-2xl text-slate-500">/{total}</span>
-        </p>
-        <div className="mt-4 flex justify-center gap-6 text-sm">
-          <div>
-            <div className="text-2xl">🔥 {streak.count}</div>
-            <div className="text-xs text-slate-400">day streak</div>
-          </div>
-          <div>
-            <div className="text-2xl">⭐ {streak.bestScore}</div>
-            <div className="text-xs text-slate-400">best score</div>
-          </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={share}
-            className="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold hover:bg-indigo-400"
-          >
-            {copied ? "Copied!" : "📋 Share score"}
+    <div className="grid gap-6 md:grid-cols-2">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">1. Upload selfie</h3>
+        <label className="flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-white/20 bg-black/20 hover:border-fuchsia-400">
+          {selfie ? (
+            <img src={selfie} alt="preview" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-center text-sm text-slate-400">📷<br />Click to upload<br /><span className="text-xs">JPG/PNG · max 5MB</span></span>
+          )}
+          <input type="file" accept="image/*" className="hidden" onChange={onFile} />
+        </label>
+        {existingAvatar && !selfie && (
+          <button onClick={onSkipGenerate} className="mt-3 w-full rounded-lg border border-white/20 py-2 text-xs text-slate-300 hover:bg-white/5">
+            Use existing avatar
           </button>
-          <button
-            onClick={onReplay}
-            className="rounded-full border border-white/20 bg-white/5 px-5 py-2 text-sm font-semibold hover:bg-white/10"
-          >
-            Play again
-          </button>
-        </div>
-        <p className="mt-4 text-xs text-slate-500">
-          New quiz drops in {hoursUntilTomorrow()}h. Come back for +1 streak.
-        </p>
+        )}
       </div>
 
-      <div className="mt-8 space-y-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-          Review
-        </h3>
-        {questions.map((q, i) => {
-          const a = answers[i];
-          const correct = a === q.answer;
-          return (
-            <div
-              key={i}
-              className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-sm"
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Choose your planet</h3>
+        <div className="grid grid-cols-5 gap-2">
+          {PLANETS.map((p) => (
+            <button
+              key={p.name}
+              onClick={() => setPlanet(p.name)}
+              className={`relative flex flex-col items-center rounded-xl border p-2 text-xs transition ${
+                planet === p.name ? "border-fuchsia-400 bg-fuchsia-500/20 scale-105" : "border-white/10 bg-white/5 hover:border-white/30"
+              }`}
+              title={p.name}
             >
-              <div className="flex gap-2">
-                <span>{correct ? "✅" : "❌"}</span>
-                <div className="flex-1">
-                  <p className="font-medium">{q.question}</p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Answer: <span className="text-emerald-300">{q.choices[q.answer]}</span>
-                    {!correct && a !== null && a >= 0 && (
-                      <>
-                        {" · "}You said:{" "}
-                        <span className="text-red-300">{q.choices[a]}</span>
-                      </>
-                    )}
-                    {a === -1 && <> · Time up</>}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+              <span className="text-xl" style={{ color: p.color }}>{p.emoji}</span>
+              <span className="mt-0.5">{p.name}</span>
+              {p.featured && <span className="absolute -right-1 -top-1 rounded-full bg-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold">HOT</span>}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-slate-400">Pluto is today's active battle world.</p>
+        <button
+          onClick={onGenerate}
+          disabled={!selfie}
+          className="mt-4 w-full rounded-full bg-gradient-to-r from-fuchsia-500 to-cyan-500 py-3 font-bold text-white shadow-lg disabled:opacity-40"
+        >
+          ✨ Generate my {planet} avatar
+        </button>
+        {error && <p className="mt-2 text-center text-xs text-red-300">{error}</p>}
       </div>
     </div>
   );
 }
 
-function hoursUntilTomorrow() {
-  const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setUTCHours(24, 0, 0, 0);
-  return Math.ceil((tomorrow.getTime() - now.getTime()) / (1000 * 60 * 60));
+function GeneratingScreen() {
+  return (
+    <div className="mx-auto max-w-md rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
+      <div className="mx-auto h-16 w-16 animate-spin rounded-full border-4 border-fuchsia-400 border-t-transparent" />
+      <p className="mt-4 font-bold">Forging your cosmic avatar…</p>
+      <p className="mt-1 text-xs text-slate-400">This can take 10–20 seconds.</p>
+    </div>
+  );
+}
+
+function PlayScreen({ avatar, savedPower, onFinished }: {
+  avatar: string | null; savedPower: string | null; onFinished: (r: GameResult) => void;
+}) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const gameRef = useRef<Phaser.Game | null>(null);
+
+  useEffect(() => {
+    if (!hostRef.current) return;
+    const base64 = avatar?.startsWith("data:") ? avatar.split(",")[1] : avatar;
+    const g = createGame(hostRef.current, base64 ?? null, savedPower);
+    gameRef.current = g;
+    const onReady = () => {
+      const scene = g.scene.getScene("game");
+      scene.events.once("finished", () => {
+        const res = g.registry.get("result") as GameResult;
+        onFinished(res);
+      });
+    };
+    // scene starts synchronously via createGame, but events not ready until next tick
+    setTimeout(onReady, 50);
+    return () => { g.destroy(true); gameRef.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div>
+      <div ref={hostRef} className="mx-auto overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl" style={{ maxWidth: 960, aspectRatio: "960/540" }} />
+      {savedPower && (
+        <p className="mt-2 text-center text-xs text-amber-300">⚡ Press E to unleash yesterday's <b>{savedPower}</b> (one-time use)</p>
+      )}
+    </div>
+  );
+}
+
+function ResultScreen({ result, planet, leaderboard, savedPower, onReplay, onNewAvatar }: {
+  result: GameResult; planet: string; leaderboard: { name: string; score: number; date: string }[];
+  savedPower: string | null; onReplay: () => void; onNewAvatar: () => void;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className={`rounded-2xl border p-6 text-center ${result.won ? "border-emerald-400/30 bg-emerald-500/10" : "border-red-400/30 bg-red-500/10"}`}>
+        <div className="text-5xl">{result.won ? "🏆" : "💀"}</div>
+        <h2 className="mt-2 text-2xl font-bold">{result.won ? "Boss Defeated!" : "You Fell"}</h2>
+        <p className="mt-1 text-4xl font-black tabular-nums">{result.score}</p>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-300">
+          <div>💎 {result.crystals}</div>
+          <div>⏱ {(result.timeMs / 1000).toFixed(1)}s</div>
+          <div>🪐 {planet}</div>
+        </div>
+        {result.won && result.powerUnlocked && (
+          <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 p-3">
+            <p className="text-xs uppercase tracking-wider text-amber-300">Hidden Power Unlocked</p>
+            <p className="mt-1 text-lg font-bold text-amber-100">⚡ {result.powerUnlocked}</p>
+            <p className="mt-1 text-xs text-amber-200/80">Come back tomorrow — press <kbd className="rounded bg-black/30 px-1">E</kbd> to use it once in your next run.</p>
+          </div>
+        )}
+        {!result.won && savedPower && (
+          <p className="mt-3 text-xs text-slate-400">Tip: use your saved power (<kbd className="rounded bg-black/30 px-1">E</kbd>) to survive longer.</p>
+        )}
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <button onClick={onReplay} className="rounded-full bg-fuchsia-500 px-5 py-2 text-sm font-bold hover:bg-fuchsia-400">Play again</button>
+          <button onClick={onNewAvatar} className="rounded-full border border-white/20 px-5 py-2 text-sm font-bold hover:bg-white/10">New avatar</button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">🏅 {planet} Leaderboard</h3>
+        {leaderboard.length === 0 ? (
+          <p className="text-sm text-slate-400">No scores yet.</p>
+        ) : (
+          <ol className="space-y-2 text-sm">
+            {leaderboard.map((e, i) => (
+              <li key={i} className="flex justify-between rounded-lg bg-white/5 px-3 py-2">
+                <span className="font-mono text-slate-400">#{i + 1}</span>
+                <span className="flex-1 px-2 truncate">{e.name}</span>
+                <span className="font-bold tabular-nums text-fuchsia-300">{e.score}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <p className="mt-3 text-xs text-slate-500">Local for now — Reddit leaderboard connects when you deploy the Devvit wrapper.</p>
+      </div>
+    </div>
+  );
 }
