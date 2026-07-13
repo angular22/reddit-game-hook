@@ -1,40 +1,14 @@
-import { context, reddit, createServer, getServerPort } from '@devvit/web/server';
-import type { IncomingMessage, ServerResponse } from 'node:http';
-
-type JsonValue = Record<string, unknown> | unknown[];
-
-function sendJson(res: ServerResponse, statusCode: number, payload: JsonValue): void {
-  res.writeHead(statusCode, { 'content-type': 'application/json' });
-  res.end(JSON.stringify(payload));
-}
-
-async function readJsonBody<T>(req: IncomingMessage): Promise<T> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  const text = Buffer.concat(chunks).toString('utf8');
-  return (text ? JSON.parse(text) : {}) as T;
-}
-
-// Player profile: returns Reddit username + snoovatar for the current viewer.
-async function handleProfile(_req: IncomingMessage, res: ServerResponse): Promise<void> {
-  try {
-    const username = await reddit.getCurrentUsername();
-    let avatarUrl: string | null = null;
-    if (username) {
-      const user = await reddit.getUserByUsername(username);
-      avatarUrl = (await user?.getSnoovatarUrl()) ?? null;
-    }
-    sendJson(res, 200, { username: username ?? null, avatarUrl });
-  } catch (err) {
-    console.error('[qokah] /api/profile failed', err);
-    sendJson(res, 200, { username: null, avatarUrl: null });
-  }
-}
+import {
+  context,
+  reddit,
+  createServer,
+  getServerPort,
+} from '@devvit/web/server';
+import type { Request, Response } from 'express';
 
 const PLANET_STYLES: Record<string, string> = {
-  pluto: 'shadow guardian of a frozen dwarf world, dark icy armor with glowing purple crystals, heart-shaped chest gem, distant sun halo',
+  pluto:
+    'shadow guardian of a frozen dwarf world, dark icy armor with glowing purple crystals, heart-shaped chest gem, distant sun halo',
   mars: 'red desert warlord, rust-iron plated armor, dust-storm cape, glowing red eyes, twin moons in background',
   europa: 'cyan ice mage from a frozen ocean moon, crystalline blue armor, frost aura, methane glow',
   kepler: 'alien-jungle ranger, bio-luminescent green armor woven with vines, exotic flora, twin-sun sky',
@@ -48,14 +22,33 @@ const PLANET_STYLES: Record<string, string> = {
   sun: 'solar champion wreathed in golden plasma, radiant crown, molten sword',
 };
 
-// AI avatar generation via Google Gemini (Nano Banana). Server-side only.
-// Accepts a client-posted selfie data URL + planet. Falls back to the selfie if AI is unavailable.
-async function handleGenerateAvatar(req: IncomingMessage, res: ServerResponse): Promise<void> {
+// createServer() from @devvit/web/server returns an Express app.
+const app = createServer();
+app.use(require('express').json({ limit: '10mb' }));
+
+// Player profile: returns Reddit username + snoovatar for the current viewer.
+app.get('/api/profile', async (_req: Request, res: Response) => {
   try {
-    const body = await readJsonBody<{ imageDataUrl?: string; planet?: string }>(req);
+    const username = await reddit.getCurrentUsername();
+    let avatarUrl: string | null = null;
+    if (username) {
+      const user = await reddit.getUserByUsername(username);
+      avatarUrl = (await user?.getSnoovatarUrl()) ?? null;
+    }
+    res.status(200).json({ username: username ?? null, avatarUrl });
+  } catch (err) {
+    console.error('[qokah] /api/profile failed', err);
+    res.status(200).json({ username: null, avatarUrl: null });
+  }
+});
+
+// AI avatar generation via Google Gemini (Nano Banana). Server-side only.
+app.post('/api/generate-avatar', async (req: Request, res: Response) => {
+  try {
+    const body = (req.body ?? {}) as { imageDataUrl?: string; planet?: string };
     const imageDataUrl = String(body.imageDataUrl ?? '');
     if (!imageDataUrl.startsWith('data:')) {
-      sendJson(res, 400, { error: 'Missing imageDataUrl' });
+      res.status(400).json({ error: 'Missing imageDataUrl' });
       return;
     }
     const planetId = String(body.planet ?? 'pluto').toLowerCase();
@@ -63,7 +56,7 @@ async function handleGenerateAvatar(req: IncomingMessage, res: ServerResponse): 
 
     const match = /^data:([^;]+);base64,(.+)$/.exec(imageDataUrl);
     if (!match) {
-      sendJson(res, 400, { error: 'Invalid image data URL' });
+      res.status(400).json({ error: 'Invalid image data URL' });
       return;
     }
     const imgMime = match[1];
@@ -72,8 +65,7 @@ async function handleGenerateAvatar(req: IncomingMessage, res: ServerResponse): 
 
     const apiKey = process.env.GEMINI_API_KEY ?? process.env.QOKAH_GEMINI_API_KEY;
     if (!apiKey || typeof apiKey !== 'string') {
-      // AI not configured — return the selfie so the game is still playable.
-      sendJson(res, 200, {
+      res.status(200).json({
         dataUrl: fallbackDataUrl,
         fallback: true,
         error:
@@ -87,8 +79,6 @@ async function handleGenerateAvatar(req: IncomingMessage, res: ServerResponse): 
 CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of the person in the reference photo — same face shape, same eyes, same nose, same mouth, same skin tone, same hair, same facial hair, same age, same gender, same ethnicity. Do NOT stylize, cartoonify, idealize, beautify, or change the face in any way. Treat the face as a direct photo-composite of the reference onto the warrior body. The face must be clearly visible, unobstructed by helmets or masks, and instantly recognizable as the same person.
 
 Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask.`;
-
-    
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -114,14 +104,14 @@ Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. F
       const errBody = await geminiRes.text();
       console.error('[qokah] gemini error', geminiRes.status, errBody.slice(0, 500));
       if (geminiRes.status === 429 || geminiRes.status === 503) {
-        sendJson(res, 200, {
+        res.status(200).json({
           dataUrl: fallbackDataUrl,
           fallback: true,
           error: 'AI avatar service is busy, so the game is using your Reddit avatar instead.',
         });
         return;
       }
-      sendJson(res, geminiRes.status, {
+      res.status(geminiRes.status).json({
         error: `Gemini error (${geminiRes.status}): ${errBody.slice(0, 300)}`,
       });
       return;
@@ -136,23 +126,23 @@ Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. F
     const outB64 = part?.inlineData?.data;
     const outMime = part?.inlineData?.mimeType ?? 'image/png';
     if (!outB64) {
-      sendJson(res, 500, { error: 'Gemini returned no image' });
+      res.status(500).json({ error: 'Gemini returned no image' });
       return;
     }
 
-    sendJson(res, 200, { dataUrl: `data:${outMime};base64,${outB64}` });
+    res.status(200).json({ dataUrl: `data:${outMime};base64,${outB64}` });
   } catch (err) {
     console.error('[qokah] /api/generate-avatar failed', err);
-    sendJson(res, 500, { error: String(err) });
+    res.status(500).json({ error: String(err) });
   }
-}
+});
 
 // Menu action: create a new QOKAH post in the current subreddit.
-async function handleCreatePost(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+app.post('/internal/menu/post-create', async (_req: Request, res: Response) => {
   try {
     const subreddit = context.subredditName;
     if (!subreddit) {
-      sendJson(res, 400, { status: 'error', message: 'No subreddit context' });
+      res.status(400).json({ status: 'error', message: 'No subreddit context' });
       return;
     }
     const post = await reddit.submitCustomPost({
@@ -160,35 +150,14 @@ async function handleCreatePost(_req: IncomingMessage, res: ServerResponse): Pro
       title: 'QOKAH — Your Avatar Creates History',
       splash: { appDisplayName: 'QOKAH' },
     });
-    sendJson(res, 200, { status: 'success', postId: post.id });
+    res.status(200).json({ status: 'success', postId: post.id });
   } catch (err) {
     console.error('[qokah] post-create failed', err);
-    sendJson(res, 500, { status: 'error', message: String(err) });
+    res.status(500).json({ status: 'error', message: String(err) });
   }
-}
-
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url ?? '/', 'http://localhost');
-  const method = req.method ?? 'GET';
-
-  if (method === 'GET' && url.pathname === '/api/profile') {
-    await handleProfile(req, res);
-    return;
-  }
-
-  if (method === 'POST' && url.pathname === '/api/generate-avatar') {
-    await handleGenerateAvatar(req, res);
-    return;
-  }
-
-  if (method === 'POST' && url.pathname === '/internal/menu/post-create') {
-    await handleCreatePost(req, res);
-    return;
-  }
-
-  sendJson(res, 404, { error: 'Not found' });
 });
+
 const port = getServerPort();
-server.listen(port, () => {
+app.listen(port, () => {
   console.log(`[qokah] server listening on :${port}`);
 });
