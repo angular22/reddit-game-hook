@@ -104,25 +104,41 @@ class GameScene extends Phaser.Scene {
 
     // Player container
     const startX = 120;
-    const startY = WORLD_H - 120;
+    const startY = WORLD_H - 130;
     this.player = this.add.container(startX, startY);
+
+    // Glowing aura behind avatar
+    const aura = this.add.circle(0, 0, 70, 0xa855f7, 0.25);
+    this.tweens.add({ targets: aura, scale: 1.15, alpha: 0.4, duration: 900, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+    this.player.add(aura);
+
     if (this.avatarKey && this.textures.exists(this.avatarKey)) {
       const img = this.add.image(0, 0, this.avatarKey);
-      const scale = 72 / Math.max(img.width, img.height);
+      const scale = 120 / Math.max(img.width, img.height);
       img.setScale(scale);
+      // circular mask via graphics
+      const mask = this.add.graphics().fillStyle(0xffffff).fillCircle(startX, startY, 58);
+      mask.setVisible(false);
+      img.setMask(mask.createGeometryMask());
       this.playerSprite = img;
     } else {
-      this.playerSprite = this.add.rectangle(0, 0, 40, 60, 0x8b5cf6);
+      this.playerSprite = this.add.rectangle(0, 0, 90, 110, 0x8b5cf6);
     }
     this.player.add(this.playerSprite);
-    this.sword = this.add.rectangle(30, 0, 44, 6, 0xfff2a8).setOrigin(0, 0.5);
+
+    // Ring border around avatar
+    const ring = this.add.circle(0, 0, 60).setStrokeStyle(3, 0xa855f7, 1);
+    this.player.add(ring);
+    this.data.set("ring", ring);
+
+    this.sword = this.add.rectangle(60, 10, 60, 8, 0xfff2a8).setOrigin(0, 0.5);
     this.sword.setVisible(false);
     this.player.add(this.sword);
 
     this.physics.add.existing(this.player);
     this.playerBody = this.player.body as Phaser.Physics.Arcade.Body;
-    this.playerBody.setSize(40, 60);
-    this.playerBody.setOffset(-20, -30);
+    this.playerBody.setSize(90, 110);
+    this.playerBody.setOffset(-45, -55);
     this.playerBody.setCollideWorldBounds(true);
     this.playerBody.setGravityY(900);
 
@@ -244,10 +260,10 @@ class GameScene extends Phaser.Scene {
     if (this.finished || this.swinging) return;
     this.swinging = true;
     this.sword.setVisible(true);
-    this.sword.x = this.facing === 1 ? 20 : -64;
+    this.sword.x = this.facing === 1 ? 30 : -90;
     this.tweens.add({
       targets: this.sword,
-      scaleX: 1.2,
+      scaleX: 1.3,
       duration: 90,
       yoyo: true,
       onComplete: () => {
@@ -257,12 +273,12 @@ class GameScene extends Phaser.Scene {
       },
     });
 
-    // Hit check
+    // Hit check — wider to match bigger avatar
     const swordWorld = new Phaser.Geom.Rectangle(
-      this.player.x + (this.facing === 1 ? 10 : -54),
-      this.player.y - 12,
-      44,
-      24,
+      this.player.x + (this.facing === 1 ? 20 : -100),
+      this.player.y - 30,
+      80,
+      60,
     );
     this.aliens.getChildren().forEach((a) => {
       const ac = a as Phaser.GameObjects.Container & { hp: number };
@@ -309,6 +325,15 @@ class GameScene extends Phaser.Scene {
       // Unlock a random hidden power (persist for tomorrow)
       const p = HIDDEN_POWERS[Phaser.Math.Between(0, HIDDEN_POWERS.length - 1)];
       this.powerUnlocked = p.name;
+      // Badge the avatar: turn ring gold + add rotating crown
+      const ring = this.data.get("ring") as Phaser.GameObjects.Arc | undefined;
+      if (ring) ring.setStrokeStyle(5, 0xfbbf24, 1);
+      const crown = this.add.text(0, -72, "👑", { fontSize: "36px" }).setOrigin(0.5);
+      this.player.add(crown);
+      this.tweens.add({ targets: crown, y: -82, yoyo: true, duration: 700, repeat: -1, ease: "Sine.easeInOut" });
+      // Screen flash
+      const flash = this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0xfbbf24, 0.6);
+      this.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
       this.showToast(`⚡ HIDDEN POWER UNLOCKED: ${p.name}!`);
       this.spawnBoss();
     }
@@ -391,14 +416,49 @@ class GameScene extends Phaser.Scene {
     this.finished = true;
     const timeMs = this.time.now - this.startTime;
     this.score += 500 + Math.max(0, 30000 - timeMs) / 10;
-    this.registry.set("result", {
-      won: true,
-      score: Math.round(this.score),
-      crystals: this.crystalsCollected,
-      timeMs,
-      powerUnlocked: this.powerUnlocked,
-    } satisfies GameResult);
-    this.events.emit("finished");
+
+    // Celebration overlay
+    const overlay = this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0x000000, 0.7);
+    const title = this.add.text(WORLD_W / 2, WORLD_H / 2 - 40, "🏆 YOU WIN! 🏆", {
+      fontFamily: "monospace", fontSize: "56px", color: "#fbbf24", fontStyle: "bold",
+      stroke: "#7c2d12", strokeThickness: 6,
+    }).setOrigin(0.5).setScale(0);
+    const sub = this.add.text(WORLD_W / 2, WORLD_H / 2 + 30, `Badge earned: ${this.powerUnlocked ?? "Champion"}`, {
+      fontFamily: "monospace", fontSize: "18px", color: "#fef3c7",
+    }).setOrigin(0.5).setAlpha(0);
+    this.tweens.add({ targets: title, scale: 1, duration: 500, ease: "Back.out" });
+    this.tweens.add({ targets: sub, alpha: 1, delay: 400, duration: 400 });
+
+    // Confetti
+    for (let i = 0; i < 40; i++) {
+      const c = this.add.rectangle(
+        Phaser.Math.Between(0, WORLD_W),
+        -10,
+        Phaser.Math.Between(4, 8),
+        Phaser.Math.Between(8, 14),
+        Phaser.Utils.Array.GetRandom([0xfbbf24, 0xa855f7, 0x22d3ee, 0xec4899, 0x22c55e]),
+      );
+      this.tweens.add({
+        targets: c,
+        y: WORLD_H + 20,
+        angle: Phaser.Math.Between(-360, 360),
+        duration: Phaser.Math.Between(1500, 3000),
+        delay: Phaser.Math.Between(0, 800),
+      });
+    }
+    // Suppress reference-unused warnings
+    void overlay;
+
+    this.time.delayedCall(2200, () => {
+      this.registry.set("result", {
+        won: true,
+        score: Math.round(this.score),
+        crystals: this.crystalsCollected,
+        timeMs,
+        powerUnlocked: this.powerUnlocked,
+      } satisfies GameResult);
+      this.events.emit("finished");
+    });
   }
 
   lose() {
