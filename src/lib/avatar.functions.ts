@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const Input = z.object({
-  imageDataUrl: z.string().min(20), // data:image/...;base64,...
+  imageDataUrl: z.string().min(20),
   planet: z.string().min(1),
 });
 
@@ -26,8 +26,8 @@ export type AvatarResult =
 export const generateTokahAvatar = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => Input.parse(raw))
   .handler(async ({ data }): Promise<AvatarResult> => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) return { ok: false, fallback: true, reason: "Missing GEMINI_API_KEY" };
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) return { ok: false, fallback: true, reason: "Missing LOVABLE_API_KEY" };
 
     const style = PLANET_STYLES[data.planet] ?? PLANET_STYLES.Pluto;
     const prompt = `Create a heroic cosmic warrior character illustration for the planet ${data.planet}.
@@ -36,20 +36,29 @@ CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of 
 
 Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask.`;
 
-    const match = /^data:([^;]+);base64,(.+)$/.exec(data.imageDataUrl);
-    if (!match) return { ok: false, fallback: true, reason: "Invalid image data URL" };
-    const mime = match[1];
-    const b64 = match[2];
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(key)}`;
-    const body = JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: mime, data: b64 } }] }],
-      generationConfig: { responseModalities: ["IMAGE"] },
-    });
-
+    // Call Lovable AI Gateway (Nano Banana - Gemini image edit/generation)
     let res: Response;
     try {
-      res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-image",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: data.imageDataUrl } },
+              ],
+            },
+          ],
+          modalities: ["image", "text"],
+        }),
+      });
     } catch (e) {
       return { ok: false, fallback: true, reason: `Network error: ${(e as Error).message}` };
     }
@@ -59,16 +68,28 @@ Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. F
       return {
         ok: false,
         fallback: true,
-        reason: res.status === 429 || res.status === 503
-          ? "AI busy (rate-limited). Using your selfie."
-          : `Gemini error (${res.status}): ${errBody.slice(0, 160)}`,
+        reason:
+          res.status === 429
+            ? "AI busy (rate-limited). Using your selfie."
+            : res.status === 402
+              ? "AI credits exhausted. Using your selfie."
+              : `Gateway error (${res.status}): ${errBody.slice(0, 200)}`,
       };
     }
 
     const json = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> } }>;
+      choices?: Array<{
+        message?: {
+          images?: Array<{ image_url?: { url?: string } }>;
+        };
+      }>;
     };
-    const outB64 = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData?.data;
-    if (!outB64) return { ok: false, fallback: true, reason: "No image returned from Gemini" };
-    return { ok: true, imageBase64: outB64 };
+
+    const imageUrl = json.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageUrl) {
+      return { ok: false, fallback: true, reason: "No image returned from Gateway" };
+    }
+    // imageUrl is a data URL like data:image/png;base64,....
+    const b64 = imageUrl.includes(",") ? imageUrl.split(",")[1] : imageUrl;
+    return { ok: true, imageBase64: b64 };
   });
