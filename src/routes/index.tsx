@@ -40,6 +40,7 @@ type Screen = "intro" | "planet" | "generating" | "play" | "result";
 
 const STORE = {
   avatar: "tokah_avatar_v1",
+  selfie: "tokah_selfie_v1",
   planet: "tokah_planet_v1",
   power: "tokah_saved_power_v1",
   scores: "tokah_scores_v1",
