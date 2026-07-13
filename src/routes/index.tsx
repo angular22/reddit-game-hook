@@ -112,25 +112,22 @@ function TokahApp() {
     setError(null);
     try {
       const r = await generateAvatar({ data: { imageDataUrl: selfie, planet } });
-      const dataUrl = `data:image/png;base64,${r.imageBase64}`;
+      const dataUrl = r.ok ? `data:image/png;base64,${r.imageBase64}` : selfie;
       setAvatar(dataUrl);
-      localStorage.setItem(STORE.avatar, dataUrl);
-      localStorage.setItem(STORE.planet, planet);
+      try {
+        localStorage.setItem(STORE.avatar, dataUrl);
+        localStorage.setItem(STORE.planet, planet);
+      } catch { /* quota */ }
       setScreen("play");
     } catch (e) {
-      const message = (e as Error).message;
-      if (/busy|rate-limit|rate limit|429|503|quota|RESOURCE_EXHAUSTED/i.test(message)) {
-        setAvatar(selfie);
-        try {
-          localStorage.setItem(STORE.avatar, selfie);
-          localStorage.setItem(STORE.planet, planet);
-        } catch { /* quota */ }
-        setError(null);
-        setScreen("play");
-        return;
-      }
-      setError(message);
-      setScreen("planet");
+      // Network / unexpected failure — still fall back to selfie so the game is playable
+      setAvatar(selfie);
+      try {
+        localStorage.setItem(STORE.avatar, selfie);
+        localStorage.setItem(STORE.planet, planet);
+      } catch { /* quota */ }
+      console.warn("Avatar generation failed, using selfie:", (e as Error).message);
+      setScreen("play");
     }
   }
 
