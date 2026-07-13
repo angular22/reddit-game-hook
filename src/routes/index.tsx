@@ -243,14 +243,7 @@ function PlanetScreen({
     <div className="grid gap-6 md:grid-cols-2">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">1. Take a selfie</h3>
-        <label className="flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-white/20 bg-black/20 hover:border-fuchsia-400">
-          {selfie ? (
-            <img src={selfie} alt="preview" className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-center text-sm text-slate-400">🤳<br />Tap to snap a selfie<br /><span className="text-xs">Front camera · max 5MB</span></span>
-          )}
-          <input type="file" accept="image/*" capture="user" className="hidden" onChange={onFile} />
-        </label>
+        <SelfieCapture selfie={selfie} onCapture={(dataUrl) => onFile({ target: { files: null } } as never) || onCaptureShim(dataUrl)} />
         {!selfie && (
           <label className="mt-2 block w-full cursor-pointer rounded-lg border border-white/10 py-2 text-center text-xs text-slate-400 hover:bg-white/5">
             or choose from gallery
