@@ -416,14 +416,49 @@ class GameScene extends Phaser.Scene {
     this.finished = true;
     const timeMs = this.time.now - this.startTime;
     this.score += 500 + Math.max(0, 30000 - timeMs) / 10;
-    this.registry.set("result", {
-      won: true,
-      score: Math.round(this.score),
-      crystals: this.crystalsCollected,
-      timeMs,
-      powerUnlocked: this.powerUnlocked,
-    } satisfies GameResult);
-    this.events.emit("finished");
+
+    // Celebration overlay
+    const overlay = this.add.rectangle(WORLD_W / 2, WORLD_H / 2, WORLD_W, WORLD_H, 0x000000, 0.7);
+    const title = this.add.text(WORLD_W / 2, WORLD_H / 2 - 40, "🏆 YOU WIN! 🏆", {
+      fontFamily: "monospace", fontSize: "56px", color: "#fbbf24", fontStyle: "bold",
+      stroke: "#7c2d12", strokeThickness: 6,
+    }).setOrigin(0.5).setScale(0);
+    const sub = this.add.text(WORLD_W / 2, WORLD_H / 2 + 30, `Badge earned: ${this.powerUnlocked ?? "Champion"}`, {
+      fontFamily: "monospace", fontSize: "18px", color: "#fef3c7",
+    }).setOrigin(0.5).setAlpha(0);
+    this.tweens.add({ targets: title, scale: 1, duration: 500, ease: "Back.out" });
+    this.tweens.add({ targets: sub, alpha: 1, delay: 400, duration: 400 });
+
+    // Confetti
+    for (let i = 0; i < 40; i++) {
+      const c = this.add.rectangle(
+        Phaser.Math.Between(0, WORLD_W),
+        -10,
+        Phaser.Math.Between(4, 8),
+        Phaser.Math.Between(8, 14),
+        Phaser.Utils.Array.GetRandom([0xfbbf24, 0xa855f7, 0x22d3ee, 0xec4899, 0x22c55e]),
+      );
+      this.tweens.add({
+        targets: c,
+        y: WORLD_H + 20,
+        angle: Phaser.Math.Between(-360, 360),
+        duration: Phaser.Math.Between(1500, 3000),
+        delay: Phaser.Math.Between(0, 800),
+      });
+    }
+    // Suppress reference-unused warnings
+    void overlay;
+
+    this.time.delayedCall(2200, () => {
+      this.registry.set("result", {
+        won: true,
+        score: Math.round(this.score),
+        crystals: this.crystalsCollected,
+        timeMs,
+        powerUnlocked: this.powerUnlocked,
+      } satisfies GameResult);
+      this.events.emit("finished");
+    });
   }
 
   lose() {
