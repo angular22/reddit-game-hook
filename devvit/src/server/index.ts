@@ -88,7 +88,7 @@ CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of 
 
 Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask.`;
 
-    const fallbackDataUrl = `data:${imgMime};base64,${imgB64}`;
+    
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(apiKey)}`,
