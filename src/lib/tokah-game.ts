@@ -260,10 +260,10 @@ class GameScene extends Phaser.Scene {
     if (this.finished || this.swinging) return;
     this.swinging = true;
     this.sword.setVisible(true);
-    this.sword.x = this.facing === 1 ? 20 : -64;
+    this.sword.x = this.facing === 1 ? 30 : -90;
     this.tweens.add({
       targets: this.sword,
-      scaleX: 1.2,
+      scaleX: 1.3,
       duration: 90,
       yoyo: true,
       onComplete: () => {
@@ -273,12 +273,12 @@ class GameScene extends Phaser.Scene {
       },
     });
 
-    // Hit check
+    // Hit check — wider to match bigger avatar
     const swordWorld = new Phaser.Geom.Rectangle(
-      this.player.x + (this.facing === 1 ? 10 : -54),
-      this.player.y - 12,
-      44,
-      24,
+      this.player.x + (this.facing === 1 ? 20 : -100),
+      this.player.y - 30,
+      80,
+      60,
     );
     this.aliens.getChildren().forEach((a) => {
       const ac = a as Phaser.GameObjects.Container & { hp: number };
