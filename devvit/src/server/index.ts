@@ -1,21 +1,45 @@
-import { Hono } from 'hono';
-import { serve } from '@hono/node-server';
-import { createServer, getServerPort } from '@devvit/web/server';
-import { api } from './routes/api';
-import { menu } from './routes/menu';
-import { triggers } from './routes/triggers';
+import { context, reddit } from '@devvit/web/server';
+import { createServer } from '@devvit/web/server';
 
-const app = new Hono();
-const internal = new Hono();
+const app = createServer();
 
-internal.route('/menu', menu);
-internal.route('/triggers', triggers);
+// Player profile: returns Reddit username + snoovatar (or default) for the current viewer.
+app.get('/api/profile', async (_req, res) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+    let avatarUrl: string | null = null;
+    if (username) {
+      const user = await reddit.getUserByUsername(username);
+      avatarUrl = (await user?.getSnoovatarUrl()) ?? null;
+    }
+    res.json({ username: username ?? null, avatarUrl });
+  } catch (err) {
+    console.error('[qokah] /api/profile failed', err);
+    res.json({ username: null, avatarUrl: null });
+  }
+});
 
-app.route('/api', api);
-app.route('/internal', internal);
+// Menu action: create a new QOKAH post in the current subreddit.
+app.post('/internal/menu/post-create', async (_req, res) => {
+  try {
+    const subreddit = context.subredditName;
+    if (!subreddit) {
+      res.status(400).json({ status: 'error', message: 'No subreddit context' });
+      return;
+    }
+    const post = await reddit.submitCustomPost({
+      subredditName: subreddit,
+      title: 'QOKAH — Your Avatar Creates History',
+      splash: { appDisplayName: 'QOKAH' },
+    });
+    res.json({ status: 'success', postId: post.id });
+  } catch (err) {
+    console.error('[qokah] post-create failed', err);
+    res.status(500).json({ status: 'error', message: String(err) });
+  }
+});
 
-serve({
-  fetch: app.fetch,
-  createServer,
-  port: getServerPort(),
+const port = Number(process.env.WEBBIT_PORT ?? process.env.PORT ?? 3000);
+app.listen(port, () => {
+  console.log(`[qokah] server listening on :${port}`);
 });

@@ -5,11 +5,7 @@
     "dir": "dist/client",
     "entrypoints": {
       "default": {
-        "inline": true,
-        "entry": "splash.html"
-      },
-      "game": {
-        "entry": "game.html"
+        "entry": "index.html"
       }
     }
   },
@@ -20,19 +16,12 @@
   "menu": {
     "items": [
       {
-        "label": "Play QOKAH",
-        "description": "Create a QOKAH cosmic warrior experience post",
+        "label": "Create QOKAH post",
+        "description": "Create a QOKAH game post",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
       }
     ]
-  },
-  "triggers": {
-    "onAppInstall": "/internal/triggers/on-app-install"
-  },
-  "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build"
   }
 }
