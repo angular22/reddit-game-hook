@@ -22,8 +22,8 @@ const PLANET_STYLES: Record<string, string> = {
 export const generateTokahAvatar = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => Input.parse(raw))
   .handler(async ({ data }): Promise<{ imageBase64: string }> => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("Missing GEMINI_API_KEY on server");
 
     const style = PLANET_STYLES[data.planet] ?? PLANET_STYLES.Pluto;
     const prompt = `Create a heroic cosmic warrior character illustration for the planet ${data.planet}.
@@ -32,40 +32,45 @@ CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of 
 
 Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask.`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": key,
+    // Parse data URL → mime + base64
+    const match = /^data:([^;]+);base64,(.+)$/.exec(data.imageDataUrl);
+    if (!match) throw new Error("Invalid image data URL");
+    const mime = match[1];
+    const b64 = match[2];
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(key)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType: mime, data: b64 } },
+              ],
+            },
+          ],
+          generationConfig: { responseModalities: ["IMAGE"] },
+        }),
       },
-      body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image",
-        modalities: ["image", "text"],
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: data.imageDataUrl } },
-            ],
-          },
-        ],
-      }),
-    });
+    );
 
     if (!res.ok) {
       const t = await res.text();
       if (res.status === 429) throw new Error("Rate limited. Try again in a moment.");
-      if (res.status === 402) throw new Error("AI credits exhausted for this workspace.");
-      throw new Error(`Avatar generation failed (${res.status}): ${t.slice(0, 200)}`);
+      throw new Error(`Gemini error (${res.status}): ${t.slice(0, 200)}`);
     }
 
     const json = (await res.json()) as {
-      choices?: Array<{ message?: { images?: Array<{ image_url?: { url?: string } }> } }>;
+      candidates?: Array<{
+        content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
+      }>;
     };
-    const url = json.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!url) throw new Error("No image returned from AI");
-    // url is typically a data: URL — strip prefix
-    const base64 = url.startsWith("data:") ? url.split(",")[1] : url;
-    return { imageBase64: base64 };
+    const part = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
+    const outB64 = part?.inlineData?.data;
+    if (!outB64) throw new Error("No image returned from Gemini");
+    return { imageBase64: outB64 };
   });
