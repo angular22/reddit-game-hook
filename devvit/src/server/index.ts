@@ -1,7 +1,8 @@
-import { context, reddit } from '@devvit/web/server';
-import { createServer } from '@devvit/web/server';
+import express from 'express';
+import { context, reddit, createServer, getServerPort } from '@devvit/web/server';
 
-const app = createServer();
+const app = express();
+app.use(express.json({ limit: '10mb' }));
 
 // Player profile: returns Reddit username + snoovatar for the current viewer.
 app.get('/api/profile', async (_req, res) => {
@@ -153,7 +154,8 @@ app.post('/internal/menu/post-create', async (_req, res) => {
   }
 });
 
-const port = Number(process.env.WEBBIT_PORT ?? process.env.PORT ?? 3000);
-app.listen(port, () => {
+const server = createServer(app);
+const port = getServerPort();
+server.listen(port, () => {
   console.log(`[qokah] server listening on :${port}`);
 });
