@@ -14,6 +14,23 @@ const PLANETS = [
   { name: 'Sun', color: '#fbbf24', emoji: '☀' },
 ];
 
+const DEFAULT_AVATAR = `data:image/svg+xml;base64,${btoa(`
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="space" cx="50%" cy="20%" r="80%"><stop offset="0" stop-color="#38bdf8" stop-opacity="0.45"/><stop offset="0.5" stop-color="#031525"/><stop offset="1" stop-color="#020617"/></radialGradient>
+    <linearGradient id="armor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#86efac"/><stop offset="0.38" stop-color="#38bdf8"/><stop offset="1" stop-color="#052e2b"/></linearGradient>
+    <filter id="softGlow"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#space)"/>
+  <circle cx="512" cy="378" r="268" fill="none" stroke="#38bdf8" stroke-width="18" opacity="0.55" filter="url(#softGlow)"/>
+  <circle cx="512" cy="284" r="150" fill="#f1c8a0"/><path d="M360 276c18-118 124-174 238-126 64 28 94 88 72 156-62-54-146-52-214-24-34 14-66 14-96-6Z" fill="#172554"/>
+  <circle cx="462" cy="302" r="14" fill="#0f172a"/><circle cx="562" cy="302" r="14" fill="#0f172a"/><path d="M470 384c28 24 58 24 86 0" fill="none" stroke="#7f1d1d" stroke-width="16" stroke-linecap="round"/>
+  <path d="M248 914c34-210 150-328 264-328s230 118 264 328H248Z" fill="url(#armor)" stroke="#86efac" stroke-width="10"/>
+  <path d="M366 618 512 782l146-164 54 122-94 192H406l-94-192 54-122Z" fill="url(#armor)" stroke="#38bdf8" stroke-width="8"/>
+  <path d="M512 624 452 770h120l-60-146Z" fill="#86efac" opacity="0.88" filter="url(#softGlow)"/>
+  <path d="M210 846h604" stroke="#86efac" stroke-width="12" opacity="0.75"/><text x="512" y="956" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="900" fill="#86efac" letter-spacing="4">EARTH WARRIOR</text>
+</svg>`)}`;
+
 type Screen = 'intro' | 'planet' | 'generating' | 'play' | 'result';
 
 const STORE = {
@@ -41,7 +58,7 @@ function loadStreak(): Streak {
 export default function App() {
   const [screen, setScreen] = useState<Screen>('intro');
   const [selfie, setSelfie] = useState<string | null>(null);
-  const [planet, setPlanet] = useState<string>('Pluto');
+  const [planet, setPlanet] = useState<string>('Earth');
   const [avatar, setAvatar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedPower, setSavedPower] = useState<string | null>(null);
@@ -83,7 +100,10 @@ export default function App() {
   }
 
   async function handleGenerate() {
-    if (!selfie) return;
+    if (!selfie) {
+      useDefaultAvatar();
+      return;
+    }
     setScreen('generating');
     setError(null);
     try {
@@ -93,7 +113,7 @@ export default function App() {
         body: JSON.stringify({ imageDataUrl: selfie, planet }),
       });
       const json = await res.json() as { dataUrl?: string; error?: string };
-      const dataUrl = json.dataUrl ?? selfie;
+      const dataUrl = json.dataUrl ?? DEFAULT_AVATAR;
       setAvatar(dataUrl);
       try {
         localStorage.setItem(STORE.avatar, dataUrl);
@@ -101,14 +121,26 @@ export default function App() {
       } catch {}
       setScreen('play');
     } catch (e) {
-      setAvatar(selfie);
+      setAvatar(DEFAULT_AVATAR);
       try {
-        localStorage.setItem(STORE.avatar, selfie);
-        localStorage.setItem(STORE.planet, planet);
+        localStorage.setItem(STORE.avatar, DEFAULT_AVATAR);
+        localStorage.setItem(STORE.planet, 'Earth');
       } catch {}
       console.warn('Avatar gen failed:', (e as Error).message);
       setScreen('play');
     }
+  }
+
+  function useDefaultAvatar() {
+    setPlanet('Earth');
+    setAvatar(DEFAULT_AVATAR);
+    setSelfie(null);
+    try {
+      localStorage.setItem(STORE.avatar, DEFAULT_AVATAR);
+      localStorage.setItem(STORE.planet, 'Earth');
+      localStorage.removeItem(STORE.selfie);
+    } catch {}
+    setScreen('play');
   }
 
   function handleFinished(r: GameResult) {
@@ -164,6 +196,7 @@ export default function App() {
           planet={planet}
           setPlanet={setPlanet}
           onGenerate={handleGenerate}
+          onDefaultAvatar={useDefaultAvatar}
           error={error}
           existingAvatar={avatar}
           onSkipGenerate={() => avatar && setScreen('play')}
@@ -221,7 +254,7 @@ function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
 }
 
 function PlanetScreen({
-  selfie, onFile, onSelfie, planet, setPlanet, onGenerate, error, existingAvatar, onSkipGenerate,
+  selfie, onFile, onSelfie, planet, setPlanet, onGenerate, onDefaultAvatar, error, existingAvatar, onSkipGenerate,
 }: {
   selfie: string | null;
   onFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -229,6 +262,7 @@ function PlanetScreen({
   planet: string;
   setPlanet: (p: string) => void;
   onGenerate: () => void;
+  onDefaultAvatar: () => void;
   error: string | null;
   existingAvatar: string | null;
   onSkipGenerate: () => void;
@@ -270,11 +304,13 @@ function PlanetScreen({
         <p style={{ marginTop: 12, fontSize: 12, color: '#94a3b8' }}>Pluto is today's active battle world.</p>
         <button
           onClick={onGenerate}
-          disabled={!selfie}
           className="btn-primary block"
           style={{ marginTop: 16 }}
         >
-          ✨ Generate my {planet} avatar
+          {selfie ? `Forge my ${planet} avatar` : 'Use default Earth avatar'}
+        </button>
+        <button onClick={onDefaultAvatar} className="btn-ghost block" style={{ marginTop: 10 }}>
+          Select default Earth avatar
         </button>
         {error && <p className="err-msg">{error}</p>}
       </div>
@@ -313,10 +349,10 @@ function PlayScreen({ avatar, savedPower, onFinished }: {
     if (!ready || !hostRef.current) return;
     let disposed = false;
     let localGame: { destroy: (r: boolean) => void } | null = null;
-    const base64 = avatar?.startsWith('data:') ? avatar.split(',')[1] : avatar;
+    const avatarDataUrl = avatar?.startsWith('data:') ? avatar : avatar ? `data:image/png;base64,${avatar}` : null;
     import('./tokah-game').then(({ createGame }) => {
       if (disposed || !hostRef.current) return;
-      const g = createGame(hostRef.current, base64 ?? null, savedPower);
+      const g = createGame(hostRef.current, avatarDataUrl, savedPower);
       localGame = g as unknown as { destroy: (r: boolean) => void };
       gameRef.current = localGame;
       setTimeout(() => {

@@ -1,12 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "qokah",
-  "permissions": {
-    "http": {
-      "enable": true,
-      "domains": ["generativelanguage.googleapis.com"]
-    }
-  },
   "post": {
     "dir": "dist/client",
     "entrypoints": {
@@ -18,15 +12,6 @@
   "server": {
     "dir": "dist/server",
     "entry": "index.cjs"
-  },
-  "settings": {
-    "global": {
-      "GEMINI_API_KEY": {
-        "type": "string",
-        "label": "Google Gemini API Key",
-        "helpText": "Server-side key used to generate player avatars. Never exposed to the client."
-      }
-    }
   },
   "menu": {
     "items": [

@@ -1,28 +1,11 @@
 import {
   context,
   reddit,
-  settings,
   createServer,
   getServerPort,
 } from '@devvit/web/server';
-import express, { type Request, type Response } from 'express';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
-
-const PLANET_STYLES: Record<string, string> = {
-  pluto:
-    'shadow guardian of a frozen dwarf world, dark icy armor with glowing purple crystals, heart-shaped chest gem, distant sun halo',
-  mars: 'red desert warlord, rust-iron plated armor, dust-storm cape, glowing red eyes, twin moons in background',
-  europa: 'cyan ice mage from a frozen ocean moon, crystalline blue armor, frost aura, methane glow',
-  kepler: 'alien-jungle ranger, bio-luminescent green armor woven with vines, exotic flora, twin-sun sky',
-  mercury: 'molten cratered warrior, bronze and gold armor, heat-forged blades, glowing lava veins',
-  venus: 'brass steampunk warrior in thick amber clouds, acid-etched details, volcanic backdrop',
-  earth: 'green-blue nature warrior, leaf-and-metal armor, verdant aura',
-  jupiter: 'colossal storm-lord, swirling gas giant armor, lightning gauntlets, orange and cream cloak',
-  saturn: 'elegant ringed cosmic knight, silver rings orbiting, pale-gold ornate armor',
-  uranus: 'cyan crystalline ice mage, tilted-ring diadem, frost armor, methane glow',
-  neptune: 'deep-blue oceanic sorcerer, wave-etched armor, trident, storm aura',
-  sun: 'solar champion wreathed in golden plasma, radiant crown, molten sword',
-};
 
 const PLANET_DEMO_STYLES: Record<string, { accent: string; glow: string; armor: string; bg: string }> = {
   pluto: { accent: '#a855f7', glow: '#38bdf8', armor: '#241039', bg: '#09091f' },
@@ -39,13 +22,35 @@ const PLANET_DEMO_STYLES: Record<string, { accent: string; glow: string; armor: 
   sun: { accent: '#facc15', glow: '#fb7185', armor: '#451a03', bg: '#190b04' },
 };
 
+const DEFAULT_AVATAR_FACE = `data:image/svg+xml;base64,${Buffer.from(`
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720">
+  <defs>
+    <linearGradient id="skin" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8d3aa"/><stop offset="1" stop-color="#b9784f"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="720" fill="#052e2b"/>
+  <circle cx="360" cy="360" r="250" fill="#38bdf8" opacity="0.16"/>
+  <circle cx="360" cy="300" r="152" fill="url(#skin)"/>
+  <path d="M206 296c22-120 112-176 210-156 84 18 132 78 118 170-54-52-136-50-188-30-38 14-88 20-140 16Z" fill="#172554"/>
+  <circle cx="306" cy="318" r="15" fill="#0f172a"/><circle cx="414" cy="318" r="15" fill="#0f172a"/>
+  <path d="M318 402c30 28 62 28 92 0" fill="none" stroke="#7f1d1d" stroke-width="18" stroke-linecap="round"/>
+  <path d="M170 720c38-150 116-228 190-228s152 78 190 228H170Z" fill="#0f766e"/>
+</svg>`, 'utf8').toString('base64')}`;
+
 function svgDataUrl(svg: string) {
   return `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`;
 }
 
-function createDemoWarriorAvatar(imageDataUrl: string, planetId: string) {
-  const style = PLANET_DEMO_STYLES[planetId] ?? PLANET_DEMO_STYLES.pluto;
+function normalizePlanet(planet: unknown) {
+  const requested = String(planet ?? 'earth').toLowerCase();
+  return PLANET_DEMO_STYLES[requested] ? requested : 'earth';
+}
+
+function createDemoWarriorAvatar(imageDataUrl: string | null | undefined, planetId: string) {
+  const style = PLANET_DEMO_STYLES[planetId] ?? PLANET_DEMO_STYLES.earth;
   const planetLabel = planetId.toUpperCase();
+  const faceDataUrl = imageDataUrl?.startsWith('data:') ? imageDataUrl : DEFAULT_AVATAR_FACE;
   return svgDataUrl(`
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
@@ -74,7 +79,7 @@ function createDemoWarriorAvatar(imageDataUrl: string, planetId: string) {
   <path d="M512 624 452 770h120l-60-146Z" fill="${style.glow}" opacity="0.88" filter="url(#softGlow)"/>
   <path d="M312 538c-54 36-102 92-136 166l102 18 88-96-54-88Zm400 0c54 36 102 92 136 166l-102 18-88-96 54-88Z" fill="${style.armor}" stroke="${style.accent}" stroke-width="8"/>
   <path d="M360 234c18-122 286-122 304 0l-42 54c-34-70-186-70-220 0l-42-54Z" fill="url(#armor)" stroke="${style.glow}" stroke-width="8"/>
-  <image href="${imageDataUrl}" x="332" y="122" width="360" height="360" preserveAspectRatio="xMidYMid slice" clip-path="url(#faceClip)"/>
+  <image href="${faceDataUrl}" x="332" y="122" width="360" height="360" preserveAspectRatio="xMidYMid slice" clip-path="url(#faceClip)"/>
   <ellipse cx="512" cy="314" rx="144" ry="166" fill="none" stroke="${style.glow}" stroke-width="10"/>
   <path d="M362 438c48 72 252 72 300 0l-40 120H402l-40-120Z" fill="url(#armor)" stroke="${style.accent}" stroke-width="8"/>
   <path d="M210 846h604" stroke="${style.glow}" stroke-width="12" opacity="0.75"/>
@@ -82,12 +87,23 @@ function createDemoWarriorAvatar(imageDataUrl: string, planetId: string) {
 </svg>`);
 }
 
-// createServer() from @devvit/web/server returns an Express app.
-const app = createServer();
-app.use(express.json({ limit: '10mb' }));
+function sendJson(res: ServerResponse, status: number, payload: unknown) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(payload));
+}
+
+async function readJsonBody(req: IncomingMessage, limitBytes = 10 * 1024 * 1024) {
+  let body = '';
+  for await (const chunk of req) {
+    body += chunk;
+    if (Buffer.byteLength(body) > limitBytes) throw new Error('Request body too large');
+  }
+  return body ? JSON.parse(body) : {};
+}
 
 // Player profile: returns Reddit username + snoovatar for the current viewer.
-app.get('/api/profile', async (_req: Request, res: Response) => {
+async function handleProfile(_req: IncomingMessage, res: ServerResponse) {
   try {
     const username = await reddit.getCurrentUsername();
     let avatarUrl: string | null = null;
@@ -95,138 +111,69 @@ app.get('/api/profile', async (_req: Request, res: Response) => {
       const user = await reddit.getUserByUsername(username);
       avatarUrl = (await user?.getSnoovatarUrl()) ?? null;
     }
-    res.status(200).json({ username: username ?? null, avatarUrl });
+    sendJson(res, 200, { username: username ?? null, avatarUrl });
   } catch (err) {
     console.error('[qokah] /api/profile failed', err);
-    res.status(200).json({ username: null, avatarUrl: null });
+    sendJson(res, 200, { username: null, avatarUrl: null });
   }
-});
+}
 
-// AI avatar generation via Google Gemini (Nano Banana). Server-side only.
-app.post('/api/generate-avatar', async (req: Request, res: Response) => {
+// Built-in avatar generation. No Gemini/API key/external HTTP call is used.
+async function handleGenerateAvatar(req: IncomingMessage, res: ServerResponse) {
   try {
-    const body = (req.body ?? {}) as { imageDataUrl?: string; planet?: string };
+    const body = (await readJsonBody(req)) as { imageDataUrl?: string; planet?: string };
     const imageDataUrl = String(body.imageDataUrl ?? '');
-    if (!imageDataUrl.startsWith('data:')) {
-      res.status(400).json({ error: 'Missing imageDataUrl' });
-      return;
-    }
-    const planetId = String(body.planet ?? 'pluto').toLowerCase();
-    const style = PLANET_STYLES[planetId] ?? PLANET_STYLES.pluto;
-
-    const match = /^data:([^;]+);base64,(.+)$/.exec(imageDataUrl);
-    if (!match) {
-      res.status(400).json({ error: 'Invalid image data URL' });
-      return;
-    }
-    const imgMime = match[1];
-    const imgB64 = match[2];
-    const fallbackDataUrl = createDemoWarriorAvatar(imageDataUrl, planetId);
-
-    // ⚠️ LOCAL DEMO ONLY — hardcoded Gemini API key. Delete before publishing publicly.
-    const HARDCODED_GEMINI_API_KEY = 'AQ.Ab8RN6LPji_H7My1-QQpKV8xNjR1LlARlrDLXixQnE7cWkoIag';
-
-    const apiKey =
-      (await settings.get<string>('GEMINI_API_KEY').catch(() => undefined)) ||
-      process.env.GEMINI_API_KEY ||
-      HARDCODED_GEMINI_API_KEY;
-    if (!apiKey || typeof apiKey !== 'string') {
-      res.status(200).json({
-        dataUrl: fallbackDataUrl,
-        fallback: true,
-        error:
-          'AI key not configured. Using built-in Reddit demo avatar.',
-      });
-      return;
-    }
-
-    const prompt = `Create a heroic cosmic warrior character illustration for the planet ${planetId}.
-
-CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of the person in the reference photo — same face shape, same eyes, same nose, same mouth, same skin tone, same hair, same facial hair, same age, same gender, same ethnicity. Do NOT stylize, cartoonify, idealize, beautify, or change the face in any way. Treat the face as a direct photo-composite of the reference onto the warrior body. The face must be clearly visible, unobstructed by helmets or masks, and instantly recognizable as the same person.
-
-Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask.`;
-
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: prompt },
-                { inlineData: { mimeType: imgMime, data: imgB64 } },
-              ],
-            },
-          ],
-          generationConfig: { responseModalities: ['IMAGE'] },
-        }),
-      },
-    );
-
-    if (!geminiRes.ok) {
-      const errBody = await geminiRes.text();
-      console.error('[qokah] gemini error', geminiRes.status, errBody.slice(0, 500));
-      if (geminiRes.status === 429 || geminiRes.status === 503) {
-        res.status(200).json({
-          dataUrl: fallbackDataUrl,
-          fallback: true,
-          error: 'AI avatar service is busy, so the game is using your Reddit avatar instead.',
-        });
-        return;
-      }
-      res.status(200).json({
-        dataUrl: fallbackDataUrl,
-        fallback: true,
-        error: `AI avatar service rejected the key (${geminiRes.status}), so the game is using built-in demo avatar.`,
-      });
-      return;
-    }
-
-    const json = (await geminiRes.json()) as {
-      candidates?: Array<{
-        content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
-      }>;
-    };
-    const part = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
-    const outB64 = part?.inlineData?.data;
-    const outMime = part?.inlineData?.mimeType ?? 'image/png';
-    if (!outB64) {
-      res.status(200).json({
-        dataUrl: fallbackDataUrl,
-        fallback: true,
-        error: 'AI returned no image, so the game is using built-in demo avatar.',
-      });
-      return;
-    }
-
-    res.status(200).json({ dataUrl: `data:${outMime};base64,${outB64}` });
+    const planetId = normalizePlanet(body.planet);
+    const dataUrl = createDemoWarriorAvatar(imageDataUrl, planetId);
+    sendJson(res, 200, { dataUrl, fallback: true });
   } catch (err) {
-    console.error('[qokah] /api/generate-avatar failed', err);
-    res.status(500).json({ error: String(err) });
+    console.warn('[qokah] /api/generate-avatar using default avatar', err);
+    sendJson(res, 200, {
+      dataUrl: createDemoWarriorAvatar(DEFAULT_AVATAR_FACE, 'earth'),
+      fallback: true,
+      error: 'Using default Earth avatar.',
+    });
   }
-});
+}
 
 // Menu action: create a new QOKAH post in the current subreddit.
-app.post('/internal/menu/post-create', async (_req: Request, res: Response) => {
+async function handleCreatePost(_req: IncomingMessage, res: ServerResponse) {
   try {
     const subreddit = context.subredditName;
     if (!subreddit) {
-      res.status(400).json({ status: 'error', message: 'No subreddit context' });
+      sendJson(res, 400, { status: 'error', message: 'No subreddit context' });
       return;
     }
     const post = await reddit.submitCustomPost({
       subredditName: subreddit,
       title: 'QOKAH — Your Avatar Creates History',
-      splash: { appDisplayName: 'QOKAH' },
     });
-    res.status(200).json({ status: 'success', postId: post.id });
+    sendJson(res, 200, { status: 'success', postId: post.id });
   } catch (err) {
     console.error('[qokah] post-create failed', err);
-    res.status(500).json({ status: 'error', message: String(err) });
+    sendJson(res, 500, { status: 'error', message: String(err) });
   }
+}
+
+const app = createServer(async (req, res) => {
+  const url = new URL(req.url ?? '/', 'http://localhost');
+
+  if (req.method === 'GET' && url.pathname === '/api/profile') {
+    await handleProfile(req, res);
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/generate-avatar') {
+    await handleGenerateAvatar(req, res);
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/internal/menu/post-create') {
+    await handleCreatePost(req, res);
+    return;
+  }
+
+  sendJson(res, 404, { error: 'Not found' });
 });
 
 const port = getServerPort();
