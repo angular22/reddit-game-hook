@@ -22,7 +22,6 @@
   "settings": {
     "global": {
       "GEMINI_API_KEY": {
-        "name": "GEMINI_API_KEY",
         "type": "string",
         "label": "Google Gemini API Key",
         "helpText": "Server-side key used to generate player avatars. Never exposed to the client.",
