@@ -58,14 +58,14 @@ class GameScene extends Phaser.Scene {
     super("game");
   }
 
-  init(data: { avatarBase64?: string; savedPower?: string | null }) {
+  init(data: { avatarDataUrl?: string | null; savedPower?: string | null }) {
     this.avatarKey = null;
     this.hasSavedPower = data.savedPower ?? null;
     this.usePowerReady = !!data.savedPower;
-    if (data.avatarBase64) {
+    if (data.avatarDataUrl) {
       this.avatarKey = "player-avatar";
       if (this.textures.exists(this.avatarKey)) this.textures.remove(this.avatarKey);
-      this.textures.addBase64(this.avatarKey, `data:image/png;base64,${data.avatarBase64}`);
+      this.textures.addBase64(this.avatarKey, data.avatarDataUrl);
     }
   }
 
@@ -569,7 +569,7 @@ class GameScene extends Phaser.Scene {
   }
 }
 
-export function createGame(parent: HTMLElement, avatarBase64: string | null, savedPower: string | null) {
+export function createGame(parent: HTMLElement, avatarDataUrl: string | null, savedPower: string | null) {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -580,7 +580,7 @@ export function createGame(parent: HTMLElement, avatarBase64: string | null, sav
     scene: [GameScene],
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   });
-  game.scene.start("game", { avatarBase64, savedPower });
+  game.scene.start("game", { avatarDataUrl, savedPower });
   return game;
 }
 

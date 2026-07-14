@@ -349,10 +349,10 @@ function PlayScreen({ avatar, savedPower, onFinished }: {
     if (!ready || !hostRef.current) return;
     let disposed = false;
     let localGame: { destroy: (r: boolean) => void } | null = null;
-    const base64 = avatar?.startsWith('data:') ? avatar.split(',')[1] : avatar;
+    const avatarDataUrl = avatar?.startsWith('data:') ? avatar : avatar ? `data:image/png;base64,${avatar}` : null;
     import('./tokah-game').then(({ createGame }) => {
       if (disposed || !hostRef.current) return;
-      const g = createGame(hostRef.current, base64 ?? null, savedPower);
+      const g = createGame(hostRef.current, avatarDataUrl, savedPower);
       localGame = g as unknown as { destroy: (r: boolean) => void };
       gameRef.current = localGame;
       setTimeout(() => {
