@@ -122,15 +122,13 @@ app.post('/api/generate-avatar', async (req: Request, res: Response) => {
     const imgB64 = match[2];
     const fallbackDataUrl = createDemoWarriorAvatar(imageDataUrl, planetId);
 
-    // ⚠️ LOCAL DEMO ONLY — hardcoded Gemini API key fallback.
-    // Replace the string below with your real Google AI Studio key (starts with "AIza...").
-    // DELETE this value before publishing your Devvit app publicly.
-    const HARDCODED_GEMINI_API_KEY = 'AIzaSyREPLACE_WITH_YOUR_REAL_GEMINI_KEY';
+    // ⚠️ LOCAL DEMO ONLY — hardcoded Gemini API key. Delete before publishing publicly.
+    const HARDCODED_GEMINI_API_KEY = 'AQ.Ab8RN6LPji_H7My1-QQpKV8xNjR1LlARlrDLXixQnE7cWkoIag';
 
     const apiKey =
       (await settings.get<string>('GEMINI_API_KEY').catch(() => undefined)) ||
       process.env.GEMINI_API_KEY ||
-      (HARDCODED_GEMINI_API_KEY.startsWith('AIza') ? HARDCODED_GEMINI_API_KEY : undefined);
+      HARDCODED_GEMINI_API_KEY;
     if (!apiKey || typeof apiKey !== 'string') {
       res.status(200).json({
         dataUrl: fallbackDataUrl,
