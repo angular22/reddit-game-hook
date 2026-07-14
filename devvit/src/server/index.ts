@@ -1,6 +1,7 @@
 import {
   context,
   reddit,
+  settings,
   createServer,
   getServerPort,
 } from '@devvit/web/server';
@@ -63,13 +64,15 @@ app.post('/api/generate-avatar', async (req: Request, res: Response) => {
     const imgB64 = match[2];
     const fallbackDataUrl = imageDataUrl;
 
-    const apiKey = process.env.GEMINI_API_KEY ?? process.env.QOKAH_GEMINI_API_KEY;
+    const apiKey =
+      (await settings.get<string>('GEMINI_API_KEY').catch(() => undefined)) ||
+      process.env.GEMINI_API_KEY;
     if (!apiKey || typeof apiKey !== 'string') {
       res.status(200).json({
         dataUrl: fallbackDataUrl,
         fallback: true,
         error:
-          'Gemini API key not configured. Set GEMINI_API_KEY before running the Devvit server.',
+          'Gemini API key not configured. Run: npx devvit settings set GEMINI_API_KEY',
       });
       return;
     }
