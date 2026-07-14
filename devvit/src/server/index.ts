@@ -23,6 +23,64 @@ const PLANET_STYLES: Record<string, string> = {
   sun: 'solar champion wreathed in golden plasma, radiant crown, molten sword',
 };
 
+const PLANET_DEMO_STYLES: Record<string, { accent: string; glow: string; armor: string; bg: string }> = {
+  pluto: { accent: '#a855f7', glow: '#38bdf8', armor: '#241039', bg: '#09091f' },
+  mars: { accent: '#f97316', glow: '#f43f5e', armor: '#3b1208', bg: '#170805' },
+  europa: { accent: '#22d3ee', glow: '#bae6fd', armor: '#083344', bg: '#041423' },
+  kepler: { accent: '#22c55e', glow: '#ec4899', armor: '#052e16', bg: '#03130a' },
+  mercury: { accent: '#f59e0b', glow: '#fef3c7', armor: '#3d2a10', bg: '#140f08' },
+  venus: { accent: '#fbbf24', glow: '#fb7185', armor: '#422006', bg: '#1c1205' },
+  earth: { accent: '#38bdf8', glow: '#86efac', armor: '#052e2b', bg: '#031525' },
+  jupiter: { accent: '#fb923c', glow: '#fde68a', armor: '#3b2614', bg: '#160f09' },
+  saturn: { accent: '#fde68a', glow: '#c4b5fd', armor: '#39321a', bg: '#14120b' },
+  uranus: { accent: '#67e8f9', glow: '#d9f99d', armor: '#083344', bg: '#04161d' },
+  neptune: { accent: '#60a5fa', glow: '#a78bfa', armor: '#0b1b4d', bg: '#04091d' },
+  sun: { accent: '#facc15', glow: '#fb7185', armor: '#451a03', bg: '#190b04' },
+};
+
+function svgDataUrl(svg: string) {
+  return `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`;
+}
+
+function createDemoWarriorAvatar(imageDataUrl: string, planetId: string) {
+  const style = PLANET_DEMO_STYLES[planetId] ?? PLANET_DEMO_STYLES.pluto;
+  const planetLabel = planetId.toUpperCase();
+  return svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="space" cx="50%" cy="20%" r="80%">
+      <stop offset="0" stop-color="${style.accent}" stop-opacity="0.45"/>
+      <stop offset="0.48" stop-color="${style.bg}"/>
+      <stop offset="1" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="armor" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="${style.glow}"/>
+      <stop offset="0.35" stop-color="${style.accent}"/>
+      <stop offset="1" stop-color="${style.armor}"/>
+    </linearGradient>
+    <clipPath id="faceClip"><ellipse cx="512" cy="314" rx="142" ry="164"/></clipPath>
+    <filter id="softGlow"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#space)"/>
+  <g opacity="0.9">
+    <circle cx="136" cy="142" r="3" fill="#fff"/><circle cx="812" cy="96" r="2" fill="#fff"/><circle cx="892" cy="296" r="3" fill="#fff"/>
+    <circle cx="214" cy="358" r="2" fill="#fff"/><circle cx="724" cy="440" r="2" fill="#fff"/><circle cx="438" cy="104" r="2" fill="#fff"/>
+  </g>
+  <circle cx="512" cy="378" r="268" fill="none" stroke="${style.accent}" stroke-width="18" opacity="0.55" filter="url(#softGlow)"/>
+  <path d="M248 914c34-210 150-328 264-328s230 118 264 328H248Z" fill="url(#armor)" stroke="${style.glow}" stroke-width="10"/>
+  <path d="M282 832 512 664l230 168-54 94H336l-54-94Z" fill="#020617" opacity="0.42"/>
+  <path d="M366 618 512 782l146-164 54 122-94 192H406l-94-192 54-122Z" fill="url(#armor)" stroke="${style.accent}" stroke-width="8"/>
+  <path d="M512 624 452 770h120l-60-146Z" fill="${style.glow}" opacity="0.88" filter="url(#softGlow)"/>
+  <path d="M312 538c-54 36-102 92-136 166l102 18 88-96-54-88Zm400 0c54 36 102 92 136 166l-102 18-88-96 54-88Z" fill="${style.armor}" stroke="${style.accent}" stroke-width="8"/>
+  <path d="M360 234c18-122 286-122 304 0l-42 54c-34-70-186-70-220 0l-42-54Z" fill="url(#armor)" stroke="${style.glow}" stroke-width="8"/>
+  <image href="${imageDataUrl}" x="332" y="122" width="360" height="360" preserveAspectRatio="xMidYMid slice" clip-path="url(#faceClip)"/>
+  <ellipse cx="512" cy="314" rx="144" ry="166" fill="none" stroke="${style.glow}" stroke-width="10"/>
+  <path d="M362 438c48 72 252 72 300 0l-40 120H402l-40-120Z" fill="url(#armor)" stroke="${style.accent}" stroke-width="8"/>
+  <path d="M210 846h604" stroke="${style.glow}" stroke-width="12" opacity="0.75"/>
+  <text x="512" y="956" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="900" fill="${style.glow}" letter-spacing="4">${planetLabel} WARRIOR</text>
+</svg>`);
+}
+
 // createServer() from @devvit/web/server returns an Express app.
 const app = createServer();
 app.use(require('express').json({ limit: '10mb' }));
@@ -62,7 +120,7 @@ app.post('/api/generate-avatar', async (req: Request, res: Response) => {
     }
     const imgMime = match[1];
     const imgB64 = match[2];
-    const fallbackDataUrl = imageDataUrl;
+    const fallbackDataUrl = createDemoWarriorAvatar(imageDataUrl, planetId);
 
     const apiKey =
       (await settings.get<string>('GEMINI_API_KEY').catch(() => undefined)) ||
@@ -72,7 +130,7 @@ app.post('/api/generate-avatar', async (req: Request, res: Response) => {
         dataUrl: fallbackDataUrl,
         fallback: true,
         error:
-          'Gemini API key not configured. Run: npx devvit settings set GEMINI_API_KEY',
+          'AI key not configured. Using built-in Reddit demo avatar.',
       });
       return;
     }
@@ -114,8 +172,10 @@ Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. F
         });
         return;
       }
-      res.status(geminiRes.status).json({
-        error: `Gemini error (${geminiRes.status}): ${errBody.slice(0, 300)}`,
+      res.status(200).json({
+        dataUrl: fallbackDataUrl,
+        fallback: true,
+        error: `AI avatar service rejected the key (${geminiRes.status}), so the game is using built-in demo avatar.`,
       });
       return;
     }
@@ -129,7 +189,11 @@ Everything ELSE around the face is stylized sci-fi fantasy game art: ${style}. F
     const outB64 = part?.inlineData?.data;
     const outMime = part?.inlineData?.mimeType ?? 'image/png';
     if (!outB64) {
-      res.status(500).json({ error: 'Gemini returned no image' });
+      res.status(200).json({
+        dataUrl: fallbackDataUrl,
+        fallback: true,
+        error: 'AI returned no image, so the game is using built-in demo avatar.',
+      });
       return;
     }
 
