@@ -147,7 +147,6 @@ async function handleCreatePost(_req: IncomingMessage, res: ServerResponse) {
     const post = await reddit.submitCustomPost({
       subredditName: subreddit,
       title: 'QOKAH — Your Avatar Creates History',
-      splash: { appDisplayName: 'QOKAH' },
     });
     sendJson(res, 200, { status: 'success', postId: post.id });
   } catch (err) {
