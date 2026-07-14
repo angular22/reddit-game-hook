@@ -1,6 +1,7 @@
 import {
   context,
   reddit,
+  settings,
   createServer,
   getServerPort,
 } from '@devvit/web/server';
