@@ -5,7 +5,8 @@ import {
   createServer,
   getServerPort,
 } from '@devvit/web/server';
-import type { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
+
 
 const PLANET_STYLES: Record<string, string> = {
   pluto:
