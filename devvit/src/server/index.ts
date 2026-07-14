@@ -5,7 +5,8 @@ import {
   createServer,
   getServerPort,
 } from '@devvit/web/server';
-import type { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
+
 
 const PLANET_STYLES: Record<string, string> = {
   pluto:
@@ -83,7 +84,7 @@ function createDemoWarriorAvatar(imageDataUrl: string, planetId: string) {
 
 // createServer() from @devvit/web/server returns an Express app.
 const app = createServer();
-app.use(require('express').json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 // Player profile: returns Reddit username + snoovatar for the current viewer.
 app.get('/api/profile', async (_req: Request, res: Response) => {
