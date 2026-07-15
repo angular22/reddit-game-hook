@@ -23,8 +23,19 @@ export const Route = createFileRoute("/")({
   component: TokahApp,
 });
 
-const PLANETS = [
-  { name: "Pluto", color: "#8b5cf6", emoji: "🪐", featured: true },
+const PLANETS: { name: string; color: string; accent: string; emoji: string; featured?: boolean }[] = [
+  { name: "Earth",   color: "#38bdf8", accent: "#86efac", emoji: "🌍", featured: true },
+  { name: "Pluto",   color: "#a855f7", accent: "#38bdf8", emoji: "🪐" },
+  { name: "Mars",    color: "#f97316", accent: "#dc2626", emoji: "🔴" },
+  { name: "Europa",  color: "#22d3ee", accent: "#fbbf24", emoji: "🧊" },
+  { name: "Kepler",  color: "#22c55e", accent: "#ec4899", emoji: "🌿" },
+  { name: "Mercury", color: "#f59e0b", accent: "#fef3c7", emoji: "☄️" },
+  { name: "Venus",   color: "#fbbf24", accent: "#fb7185", emoji: "🌋" },
+  { name: "Jupiter", color: "#fb923c", accent: "#fde68a", emoji: "🪐" },
+  { name: "Saturn",  color: "#fde68a", accent: "#c4b5fd", emoji: "💫" },
+  { name: "Uranus",  color: "#67e8f9", accent: "#d9f99d", emoji: "🌐" },
+  { name: "Neptune", color: "#60a5fa", accent: "#a78bfa", emoji: "🌊" },
+  { name: "Sun",     color: "#facc15", accent: "#fb7185", emoji: "☀️" },
 ];
 
 type Screen = "intro" | "planet" | "generating" | "play" | "result";
@@ -42,28 +53,45 @@ function svgDataUrl(svg: string) {
   return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 
-function createPlutoFallbackAvatar(imageDataUrl: string) {
+const PLANET_STYLE: Record<string, { bg: string; accent: string; glow: string; armor: string }> = {
+  Earth:   { bg: "#031525", accent: "#38bdf8", glow: "#86efac", armor: "#052e2b" },
+  Pluto:   { bg: "#09091f", accent: "#a855f7", glow: "#38bdf8", armor: "#241039" },
+  Mars:    { bg: "#170805", accent: "#f97316", glow: "#f43f5e", armor: "#3b1208" },
+  Europa:  { bg: "#041423", accent: "#22d3ee", glow: "#bae6fd", armor: "#083344" },
+  Kepler:  { bg: "#03130a", accent: "#22c55e", glow: "#ec4899", armor: "#052e16" },
+  Mercury: { bg: "#140f08", accent: "#f59e0b", glow: "#fef3c7", armor: "#3d2a10" },
+  Venus:   { bg: "#1c1205", accent: "#fbbf24", glow: "#fb7185", armor: "#422006" },
+  Jupiter: { bg: "#160f09", accent: "#fb923c", glow: "#fde68a", armor: "#3b2614" },
+  Saturn:  { bg: "#14120b", accent: "#fde68a", glow: "#c4b5fd", armor: "#39321a" },
+  Uranus:  { bg: "#04161d", accent: "#67e8f9", glow: "#d9f99d", armor: "#083344" },
+  Neptune: { bg: "#04091d", accent: "#60a5fa", glow: "#a78bfa", armor: "#0b1b4d" },
+  Sun:     { bg: "#190b04", accent: "#facc15", glow: "#fb7185", armor: "#451a03" },
+};
+
+function createFallbackAvatar(imageDataUrl: string, planet: string) {
+  const s = PLANET_STYLE[planet] ?? PLANET_STYLE.Earth;
+  const label = planet.toUpperCase();
   return svgDataUrl(`
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <radialGradient id="space" cx="50%" cy="18%" r="82%"><stop offset="0" stop-color="#a855f7" stop-opacity="0.48"/><stop offset="0.52" stop-color="#09091f"/><stop offset="1" stop-color="#020617"/></radialGradient>
-    <linearGradient id="armor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#38bdf8"/><stop offset="0.38" stop-color="#a855f7"/><stop offset="1" stop-color="#241039"/></linearGradient>
+    <radialGradient id="space" cx="50%" cy="18%" r="82%"><stop offset="0" stop-color="${s.accent}" stop-opacity="0.48"/><stop offset="0.52" stop-color="${s.bg}"/><stop offset="1" stop-color="#020617"/></radialGradient>
+    <linearGradient id="armor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="${s.glow}"/><stop offset="0.38" stop-color="${s.accent}"/><stop offset="1" stop-color="${s.armor}"/></linearGradient>
     <clipPath id="faceClip"><ellipse cx="512" cy="314" rx="142" ry="164"/></clipPath>
     <filter id="softGlow"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
   <rect width="1024" height="1024" fill="url(#space)"/>
   <g opacity="0.9"><circle cx="136" cy="142" r="3" fill="#fff"/><circle cx="812" cy="96" r="2" fill="#fff"/><circle cx="892" cy="296" r="3" fill="#fff"/><circle cx="214" cy="358" r="2" fill="#fff"/><circle cx="724" cy="440" r="2" fill="#fff"/></g>
-  <circle cx="512" cy="378" r="268" fill="none" stroke="#a855f7" stroke-width="18" opacity="0.55" filter="url(#softGlow)"/>
-  <path d="M248 914c34-210 150-328 264-328s230 118 264 328H248Z" fill="url(#armor)" stroke="#38bdf8" stroke-width="10"/>
-  <path d="M366 618 512 782l146-164 54 122-94 192H406l-94-192 54-122Z" fill="url(#armor)" stroke="#a855f7" stroke-width="8"/>
-  <path d="M512 624 452 770h120l-60-146Z" fill="#38bdf8" opacity="0.88" filter="url(#softGlow)"/>
-  <path d="M312 538c-54 36-102 92-136 166l102 18 88-96-54-88Zm400 0c54 36 102 92 136 166l-102 18-88-96 54-88Z" fill="#241039" stroke="#a855f7" stroke-width="8"/>
-  <path d="M360 234c18-122 286-122 304 0l-42 54c-34-70-186-70-220 0l-42-54Z" fill="url(#armor)" stroke="#38bdf8" stroke-width="8"/>
+  <circle cx="512" cy="378" r="268" fill="none" stroke="${s.accent}" stroke-width="18" opacity="0.55" filter="url(#softGlow)"/>
+  <path d="M248 914c34-210 150-328 264-328s230 118 264 328H248Z" fill="url(#armor)" stroke="${s.glow}" stroke-width="10"/>
+  <path d="M366 618 512 782l146-164 54 122-94 192H406l-94-192 54-122Z" fill="url(#armor)" stroke="${s.accent}" stroke-width="8"/>
+  <path d="M512 624 452 770h120l-60-146Z" fill="${s.glow}" opacity="0.88" filter="url(#softGlow)"/>
+  <path d="M312 538c-54 36-102 92-136 166l102 18 88-96-54-88Zm400 0c54 36 102 92 136 166l-102 18-88-96 54-88Z" fill="${s.armor}" stroke="${s.accent}" stroke-width="8"/>
+  <path d="M360 234c18-122 286-122 304 0l-42 54c-34-70-186-70-220 0l-42-54Z" fill="url(#armor)" stroke="${s.glow}" stroke-width="8"/>
   <image href="${imageDataUrl}" x="332" y="122" width="360" height="360" preserveAspectRatio="xMidYMid slice" clip-path="url(#faceClip)"/>
-  <ellipse cx="512" cy="314" rx="144" ry="166" fill="none" stroke="#38bdf8" stroke-width="10"/>
-  <path d="M362 438c48 72 252 72 300 0l-40 120H402l-40-120Z" fill="url(#armor)" stroke="#a855f7" stroke-width="8"/>
-  <path d="M210 846h604" stroke="#38bdf8" stroke-width="12" opacity="0.75"/>
-  <text x="512" y="956" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="900" fill="#38bdf8" letter-spacing="4">PLUTO WARRIOR</text>
+  <ellipse cx="512" cy="314" rx="144" ry="166" fill="none" stroke="${s.glow}" stroke-width="10"/>
+  <path d="M362 438c48 72 252 72 300 0l-40 120H402l-40-120Z" fill="url(#armor)" stroke="${s.accent}" stroke-width="8"/>
+  <path d="M210 846h604" stroke="${s.glow}" stroke-width="12" opacity="0.75"/>
+  <text x="512" y="956" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="900" fill="${s.glow}" letter-spacing="4">${label} WARRIOR</text>
 </svg>`);
 }
 
@@ -101,7 +129,7 @@ function TokahApp() {
       const p = localStorage.getItem(STORE.planet);
       if (a) setAvatar(a);
       if (s) setSelfie(s);
-      if (p === "Pluto") setPlanet(p);
+      if (p && PLANET_STYLE[p]) setPlanet(p);
       const saved = localStorage.getItem(STORE.power);
       if (saved) {
         const parsed = JSON.parse(saved) as { power: string; date: string };
@@ -132,7 +160,7 @@ function TokahApp() {
     setError(null);
     try {
       const r = await generateAvatar({ data: { imageDataUrl: selfie, planet } });
-      const dataUrl = r.ok ? `data:image/png;base64,${r.imageBase64}` : createPlutoFallbackAvatar(selfie);
+      const dataUrl = r.ok ? `data:image/png;base64,${r.imageBase64}` : createFallbackAvatar(selfie, planet);
       if (!r.ok) {
         setError(r.reason);
       }
@@ -143,14 +171,14 @@ function TokahApp() {
       } catch { /* quota */ }
       setScreen("play");
     } catch (e) {
-      const dataUrl = createPlutoFallbackAvatar(selfie);
+      const dataUrl = createFallbackAvatar(selfie, planet);
       setAvatar(dataUrl);
       try {
         localStorage.setItem(STORE.avatar, dataUrl);
-        localStorage.setItem(STORE.planet, "Pluto");
+        localStorage.setItem(STORE.planet, planet);
       } catch { /* quota */ }
-      console.warn("Avatar generation failed, using Pluto fallback:", (e as Error).message);
-      setError("AI credits were unavailable, so a Pluto warrior avatar was created locally.");
+      console.warn("Avatar generation failed, using local fallback:", (e as Error).message);
+      setError(`Gemini call failed — used a local ${planet} warrior avatar instead.`);
       setScreen("play");
     }
   }
@@ -316,8 +344,8 @@ function PlanetScreen({
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Pluto avatar</h3>
-        <div className="grid grid-cols-1 gap-2">
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Pick your planet</h3>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {PLANETS.map((p) => (
             <button
               key={p.name}
@@ -329,11 +357,11 @@ function PlanetScreen({
             >
               <span className="text-xl" style={{ color: p.color }}>{p.emoji}</span>
               <span className="mt-0.5">{p.name}</span>
-              {p.featured && <span className="absolute -right-1 -top-1 rounded-full bg-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold">HOT</span>}
+              {p.featured && <span className="absolute -right-1 -top-1 rounded-full bg-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold">DEFAULT</span>}
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-400">Only one avatar will be generated: Pluto warrior.</p>
+        <p className="mt-3 text-xs text-slate-400">Gemini generates a custom warrior for the planet you pick. If Gemini fails, a local {planet} warrior is used.</p>
         <button
           onClick={onGenerate}
           disabled={!selfie}
