@@ -127,7 +127,9 @@ function TokahApp() {
       const a = localStorage.getItem(STORE.avatar);
       const s = localStorage.getItem(STORE.selfie);
       const p = localStorage.getItem(STORE.planet);
-      if (a) setAvatar(a);
+      if (a && !a.startsWith("data:image/svg")) setAvatar(a);
+      else if (a) localStorage.removeItem(STORE.avatar);
+
       if (s) setSelfie(s);
       if (p && PLANET_STYLE[p]) setPlanet(p);
       const saved = localStorage.getItem(STORE.power);
