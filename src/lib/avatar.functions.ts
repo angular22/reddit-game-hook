@@ -46,33 +46,35 @@ COMPOSITION: Vertical 1:1, subject fills the frame, background is planet-themed 
 export const generateTokahAvatar = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => Input.parse(raw))
   .handler(async ({ data }): Promise<AvatarResult> => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) return { ok: false, fallback: true, reason: "Missing GEMINI_API_KEY" };
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) return { ok: false, fallback: true, reason: "Missing LOVABLE_API_KEY" };
 
-    const [, meta = "image/png", base64 = ""] =
-      data.imageDataUrl.match(/^data:([^;]+);base64,(.+)$/) ?? [];
-    if (!base64) return { ok: false, fallback: true, reason: "Please upload a valid image." };
+    const match = data.imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return { ok: false, fallback: true, reason: "Please upload a valid image." };
+    const dataUrl = data.imageDataUrl;
 
     const planet = data.planet && PLANET_PROMPTS[data.planet] ? data.planet : "Earth";
 
-    // Google Gemini image model (native API — uses user-supplied GEMINI_API_KEY).
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${encodeURIComponent(key)}`;
     let res: Response;
     try {
-      res = await fetch(url, {
+      res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          contents: [
+          model: "google/gemini-3.1-flash-image",
+          messages: [
             {
               role: "user",
-              parts: [
-                { text: buildPrompt(planet) },
-                { inlineData: { mimeType: meta, data: base64 } },
+              content: [
+                { type: "text", text: buildPrompt(planet) },
+                { type: "image_url", image_url: { url: dataUrl } },
               ],
             },
           ],
-          generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+          modalities: ["image", "text"],
         }),
       });
     } catch (e) {
@@ -84,20 +86,15 @@ export const generateTokahAvatar = createServerFn({ method: "POST" })
       return {
         ok: false,
         fallback: true,
-        reason: `Gemini error (${res.status}): ${errBody.slice(0, 200)}`,
+        reason: `Lovable AI error (${res.status}): ${errBody.slice(0, 200)}`,
       };
     }
 
-    const json = (await res.json()) as {
-      candidates?: Array<{
-        content?: { parts?: Array<{ inlineData?: { data?: string } }> };
-      }>;
-    };
-
-    const b64 = json.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)
-      ?.inlineData?.data;
+    const json = (await res.json()) as { data?: Array<{ b64_json?: string }> };
+    const b64 = json.data?.[0]?.b64_json;
     if (!b64) {
-      return { ok: false, fallback: true, reason: "No image returned from Gemini" };
+      return { ok: false, fallback: true, reason: "No image returned" };
     }
     return { ok: true, imageBase64: b64 };
   });
+
