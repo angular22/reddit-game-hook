@@ -27,11 +27,20 @@ const PLANET_PROMPTS: Record<string, string> = {
 
 function buildPrompt(planet: string) {
   const style = PLANET_PROMPTS[planet] ?? PLANET_PROMPTS.Earth;
-  return `Create exactly one ${planet} warrior avatar from the reference photo.
+  return `Create ONE epic cosmic warrior character portrait using the person in the reference photo as the face.
 
-CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of the person in the reference photo — same face shape, eyes, nose, mouth, skin tone, hair, facial hair, age, gender, ethnicity. Do NOT stylize, cartoonify, idealize, beautify, or change the face. Treat the face as a direct photo-composite onto the warrior body. Face clearly visible, unobstructed, instantly recognizable.
+FACE (non-negotiable): Photorealistic face-swap of the reference photo — exact same face shape, eyes, nose, mouth, skin tone, hair, facial hair, age, gender, ethnicity. Do NOT stylize, cartoonify, beautify, age, or change the face in ANY way. Face must be clearly visible, front-facing, no helmet, no mask, no goggles covering it. Instantly recognizable as the same person.
 
-Everything ELSE around the face is stylized sci-fi fantasy game art: ${style} Full-body character portrait, centered composition, dynamic hero pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors. No helmet covering the face. No mask. Return only the final image.`;
+BODY & ARMOR (fully stylized sci-fi fantasy game art, this is a WARRIOR, not a portrait):
+- Full-body hero shot, feet to head, centered, heroic power stance.
+- Ornate battle armor: shoulder pauldrons, chest plate with glowing energy core, gauntlets, greaves, layered cloak/cape flowing behind.
+- Holding a large glowing weapon (sword, spear, or war-hammer) — weapon fully visible with visible energy trails.
+- Rim lighting, dramatic god-rays, particle effects, lens flare.
+- Painterly high-detail digital illustration, ArtStation quality, cinematic vibrant colors, comic-book / video-game key-art style.
+
+THEME: ${style}
+
+COMPOSITION: Vertical 1:1, subject fills the frame, background is planet-themed environment with stars. No text, no logos, no watermark. Return only the finished character image.`;
 }
 
 export const generateTokahAvatar = createServerFn({ method: "POST" })
