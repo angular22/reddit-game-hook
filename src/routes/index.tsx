@@ -24,16 +24,7 @@ export const Route = createFileRoute("/")({
 });
 
 const PLANETS = [
-  { name: "Mercury", color: "#a89078", emoji: "☿" },
-  { name: "Venus", color: "#e8b562", emoji: "♀" },
-  { name: "Earth", color: "#4b9cd3", emoji: "🌍" },
-  { name: "Mars", color: "#c1440e", emoji: "♂" },
-  { name: "Jupiter", color: "#d8a870", emoji: "♃" },
-  { name: "Saturn", color: "#e0c992", emoji: "♄" },
-  { name: "Uranus", color: "#7fdbe0", emoji: "♅" },
-  { name: "Neptune", color: "#3b5ff0", emoji: "♆" },
   { name: "Pluto", color: "#8b5cf6", emoji: "🪐", featured: true },
-  { name: "Sun", color: "#fbbf24", emoji: "☀" },
 ];
 
 type Screen = "intro" | "planet" | "generating" | "play" | "result";
@@ -81,7 +72,7 @@ function TokahApp() {
       const p = localStorage.getItem(STORE.planet);
       if (a) setAvatar(a);
       if (s) setSelfie(s);
-      if (p) setPlanet(p);
+      if (p === "Pluto") setPlanet(p);
       const saved = localStorage.getItem(STORE.power);
       if (saved) {
         const parsed = JSON.parse(saved) as { power: string; date: string };
@@ -112,7 +103,12 @@ function TokahApp() {
     setError(null);
     try {
       const r = await generateAvatar({ data: { imageDataUrl: selfie, planet } });
-      const dataUrl = r.ok ? `data:image/png;base64,${r.imageBase64}` : selfie;
+      if (!r.ok) {
+        setError(r.reason);
+        setScreen("planet");
+        return;
+      }
+      const dataUrl = `data:image/png;base64,${r.imageBase64}`;
       setAvatar(dataUrl);
       try {
         localStorage.setItem(STORE.avatar, dataUrl);
@@ -120,14 +116,9 @@ function TokahApp() {
       } catch { /* quota */ }
       setScreen("play");
     } catch (e) {
-      // Network / unexpected failure — still fall back to selfie so the game is playable
-      setAvatar(selfie);
-      try {
-        localStorage.setItem(STORE.avatar, selfie);
-        localStorage.setItem(STORE.planet, planet);
-      } catch { /* quota */ }
       console.warn("Avatar generation failed, using selfie:", (e as Error).message);
-      setScreen("play");
+      setError("Avatar generation failed. Please try once more.");
+      setScreen("planet");
     }
   }
 
@@ -292,8 +283,8 @@ function PlanetScreen({
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Choose your planet</h3>
-        <div className="grid grid-cols-5 gap-2">
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Pluto avatar</h3>
+        <div className="grid grid-cols-1 gap-2">
           {PLANETS.map((p) => (
             <button
               key={p.name}
@@ -309,7 +300,7 @@ function PlanetScreen({
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-400">Pluto is today's active battle world.</p>
+        <p className="mt-3 text-xs text-slate-400">Only one avatar will be generated: Pluto warrior.</p>
         <button
           onClick={onGenerate}
           disabled={!selfie}
