@@ -181,7 +181,6 @@ function TokahApp() {
       setError(`Gemini call failed — used a local ${planet} warrior avatar instead.`);
       setScreen("play");
     }
-    }
   }
 
   function handleFinished(r: GameResult) {
