@@ -289,10 +289,8 @@ function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
         height={576}
         className="mx-auto -mt-2 mb-2 h-auto w-full max-w-sm drop-shadow-[0_0_30px_rgba(217,70,239,0.35)]"
       />
-      {avatar ? (
+      {avatar && (
         <img src={avatar} alt="Your Qokah avatar" className="mx-auto h-40 w-40 rounded-2xl border-2 border-fuchsia-500 object-cover shadow-[0_0_40px_rgba(217,70,239,0.4)]" />
-      ) : (
-        <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-2xl border-2 border-dashed border-white/20 text-5xl">👤</div>
       )}
       <p className="mt-4 text-sm text-slate-400">
         Snap a selfie → pick your planet → fight aliens, collect crystals, and unlock a <span className="text-fuchsia-300">hidden power</span> only you carry into tomorrow's run.
@@ -328,14 +326,12 @@ function PlanetScreen({
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">1. Take a selfie</h3>
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">1. Selfie or upload</h3>
         <SelfieCapture selfie={selfie} onCapture={onSelfie} />
-        {!selfie && (
-          <label className="mt-2 block w-full cursor-pointer rounded-lg border border-white/10 py-2 text-center text-xs text-slate-400 hover:bg-white/5">
-            or choose from gallery
-            <input type="file" accept="image/*" className="hidden" onChange={onFile} />
-          </label>
-        )}
+        <label className="mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-fuchsia-400/40 bg-fuchsia-500/10 py-2.5 text-center text-xs font-bold text-fuchsia-200 hover:bg-fuchsia-500/20">
+          📁 {selfie ? "Upload a different picture" : "Upload a picture from gallery"}
+          <input type="file" accept="image/*" className="hidden" onChange={onFile} />
+        </label>
         {existingAvatar && !selfie && (
           <button onClick={onSkipGenerate} className="mt-3 w-full rounded-lg border border-white/20 py-2 text-xs text-slate-300 hover:bg-white/5">
             Use existing avatar
