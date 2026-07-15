@@ -289,9 +289,18 @@ function IntroScreen({ onNext, avatar, savedPower, powerAvailableToday }: {
         height={576}
         className="mx-auto -mt-2 mb-2 h-auto w-full max-w-sm drop-shadow-[0_0_30px_rgba(217,70,239,0.35)]"
       />
-      {avatar && (
+      {avatar ? (
         <img src={avatar} alt="Your Qokah avatar" className="mx-auto h-40 w-40 rounded-2xl border-2 border-fuchsia-500 object-cover shadow-[0_0_40px_rgba(217,70,239,0.4)]" />
+      ) : (
+        <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-2xl border-2 border-dashed border-white/15 bg-white/5 text-white/25">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-14 w-14">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="m21 15-5-5L5 21" />
+          </svg>
+        </div>
       )}
+
       <p className="mt-4 text-sm text-slate-400">
         Snap a selfie → pick your planet → fight aliens, collect crystals, and unlock a <span className="text-fuchsia-300">hidden power</span> only you carry into tomorrow's run.
       </p>
