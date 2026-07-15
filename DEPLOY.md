@@ -129,8 +129,24 @@ See `DEVPOST.md` for pre-written copy you can paste in.
 
 ---
 
+## Reddit demo: default Earth avatar
+
+The public Reddit post ships with a **default Earth avatar** players can select so the game is playable even when the AI service does not respond for external users. This keeps the demo reliable during judging.
+
+To enable custom avatar generation, configure an AI provider in `devvit/.env`:
+
+```bash
+# Option A: Lovable AI Gateway (used by the web app)
+LOVABLE_API_KEY=your_lovable_api_key
+
+# Option B: Google Gemini (use this if Lovable AI responses are unavailable for other users)
+GEMINI_API_KEY=your_google_gemini_api_key
+```
+
+Then wire the chosen key into `devvit/src/server/index.ts` so `/api/generate-avatar` returns a real warrior image instead of falling back to the default Earth avatar.
+
 ## Troubleshooting
 
 - **`devvit upload` fails with "webview too large"**: the client bundle is over Devvit's cap. Run `bun run build --minify` and remove unused assets under `src/assets/`.
 - **Selfie camera doesn't work inside Devvit**: Reddit's webview requires the app to be served over HTTPS (Devvit does this automatically once uploaded). Camera won't work over local dev — test on the deployed app.
-- **AI avatar generation fails inside Devvit**: server functions calling external APIs (Gemini) must go through Devvit's `context.http` fetch, not raw `fetch`. Update `src/lib/avatar.functions.ts` handler to accept a `context.http` argument bridged from the Devvit server.
+- **AI avatar generation fails inside Devvit**: server functions calling external APIs must go through Devvit's `context.http` fetch, not raw `fetch`. Update `src/lib/avatar.functions.ts` handler to accept a `context.http` argument bridged from the Devvit server, or **select the default Earth avatar** to skip generation.

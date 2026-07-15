@@ -20,10 +20,11 @@ Judges won't watch past 60 seconds. Every second earns its keep.
 **0:05–0:12 — Selfie capture**
 - Click into the post. Camera opens. Snap selfie. Confirm.
 - On-screen text: `Your face → your hero`
+- Note: for a reliable Reddit demo you can also **select the default Earth avatar** instead of waiting for AI generation.
 
 **0:12–0:20 — Planet + generation**
 - Pick Pluto (dramatic dark theme reads well on video).
-- Click "Generate my Pluto avatar."
+- Click "Generate my Pluto avatar" (or select the default Earth avatar for instant play).
 - Cut to: AI-generated cosmic warrior version of the selfie appears.
 - On-screen text: `AI-generated · face preserved`
 
