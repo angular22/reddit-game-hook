@@ -326,14 +326,12 @@ function PlanetScreen({
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">1. Take a selfie</h3>
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">1. Selfie or upload</h3>
         <SelfieCapture selfie={selfie} onCapture={onSelfie} />
-        {!selfie && (
-          <label className="mt-2 block w-full cursor-pointer rounded-lg border border-white/10 py-2 text-center text-xs text-slate-400 hover:bg-white/5">
-            or choose from gallery
-            <input type="file" accept="image/*" className="hidden" onChange={onFile} />
-          </label>
-        )}
+        <label className="mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-fuchsia-400/40 bg-fuchsia-500/10 py-2.5 text-center text-xs font-bold text-fuchsia-200 hover:bg-fuchsia-500/20">
+          📁 {selfie ? "Upload a different picture" : "Upload a picture from gallery"}
+          <input type="file" accept="image/*" className="hidden" onChange={onFile} />
+        </label>
         {existingAvatar && !selfie && (
           <button onClick={onSkipGenerate} className="mt-3 w-full rounded-lg border border-white/20 py-2 text-xs text-slate-300 hover:bg-white/5">
             Use existing avatar
