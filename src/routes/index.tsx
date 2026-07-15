@@ -129,7 +129,7 @@ function TokahApp() {
       const p = localStorage.getItem(STORE.planet);
       if (a) setAvatar(a);
       if (s) setSelfie(s);
-      if (p === "Pluto") setPlanet(p);
+      if (p && PLANET_STYLE[p]) setPlanet(p);
       const saved = localStorage.getItem(STORE.power);
       if (saved) {
         const parsed = JSON.parse(saved) as { power: string; date: string };
