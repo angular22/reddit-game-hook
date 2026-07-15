@@ -13,6 +13,21 @@
     "dir": "dist/server",
     "entry": "index.cjs"
   },
+  "http": {
+    "fetch": {
+      "enabled": true,
+      "domains": ["ai.gateway.lovable.dev"]
+    }
+  },
+  "settings": [
+    {
+      "type": "string",
+      "name": "LOVABLE_API_KEY",
+      "label": "Lovable AI key",
+      "helpText": "Server-only key used to generate one Pluto avatar.",
+      "isSecret": true
+    }
+  ],
   "menu": {
     "items": [
       {

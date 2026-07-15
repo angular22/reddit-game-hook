@@ -3,6 +3,7 @@ import {
   reddit,
   createServer,
   getServerPort,
+  settings,
 } from '@devvit/web/server';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -43,8 +44,60 @@ function svgDataUrl(svg: string) {
 }
 
 function normalizePlanet(planet: unknown) {
-  const requested = String(planet ?? 'earth').toLowerCase();
-  return PLANET_DEMO_STYLES[requested] ? requested : 'earth';
+  const requested = String(planet ?? 'pluto').toLowerCase();
+  return requested === 'pluto' ? 'pluto' : 'pluto';
+}
+
+function splitDataUrl(dataUrl: string) {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], base64: match[2] };
+}
+
+async function createLovablePlutoAvatar(imageDataUrl: string) {
+  const parsed = splitDataUrl(imageDataUrl);
+  if (!parsed) throw new Error('Please upload a valid image.');
+
+  const keyFromSettings = await settings.get('LOVABLE_API_KEY');
+  const key = String(keyFromSettings || process.env.LOVABLE_API_KEY || '').trim();
+  if (!key) throw new Error('LOVABLE_API_KEY is not configured.');
+
+  const prompt = `Create exactly one Pluto warrior avatar from the reference photo.
+
+CRITICAL FACE RULE: The warrior's face MUST be an exact photorealistic match of the person in the reference photo — same face shape, same eyes, same nose, same mouth, same skin tone, same hair, same facial hair, same age, same gender, same ethnicity. Do NOT stylize, cartoonify, idealize, beautify, or change the face in any way. Treat the face as a direct photo-composite of the reference onto the warrior body. The face must be clearly visible, unobstructed by helmets or masks, and instantly recognizable as the same person.
+
+Everything ELSE around the face is stylized sci-fi fantasy game art: Pluto shadow guardian of the dwarf realm, dark icy armor, heart-shaped chest crystal, purple-black cloak, distant sun halo, frozen dwarf-planet surface, cyan starlight. Full-body character portrait, centered composition, dynamic pose holding a glowing sword, dramatic painterly digital illustration, vibrant colors, solid dark cosmic background with stars. No helmet covering the face. No mask. Return only the final image.`;
+
+  const upstream = await fetch('https://ai.gateway.lovable.dev/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-3.1-flash-lite-image',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: parsed.mimeType || 'image/png', data: parsed.base64 } },
+          ],
+        },
+      ],
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+    }),
+  });
+
+  if (!upstream.ok) {
+    const text = await upstream.text().catch(() => '');
+    throw new Error(upstream.status === 402 ? 'AI credits are exhausted for now.' : `AI Gateway error ${upstream.status}: ${text.slice(0, 180)}`);
+  }
+
+  const json = await upstream.json() as { data?: Array<{ b64_json?: string }> };
+  const b64 = json.data?.[0]?.b64_json;
+  if (!b64) throw new Error('No image returned from AI Gateway.');
+  return `data:image/png;base64,${b64}`;
 }
 
 function createDemoWarriorAvatar(imageDataUrl: string | null | undefined, planetId: string) {
@@ -118,20 +171,21 @@ async function handleProfile(_req: IncomingMessage, res: ServerResponse) {
   }
 }
 
-// Built-in avatar generation. No Gemini/API key/external HTTP call is used.
+// Lovable AI avatar generation: one Pluto avatar only.
 async function handleGenerateAvatar(req: IncomingMessage, res: ServerResponse) {
+  let imageDataUrl = '';
   try {
     const body = (await readJsonBody(req)) as { imageDataUrl?: string; planet?: string };
-    const imageDataUrl = String(body.imageDataUrl ?? '');
+    imageDataUrl = String(body.imageDataUrl ?? '');
     const planetId = normalizePlanet(body.planet);
-    const dataUrl = createDemoWarriorAvatar(imageDataUrl, planetId);
-    sendJson(res, 200, { dataUrl, fallback: true });
+    const dataUrl = await createLovablePlutoAvatar(imageDataUrl);
+    sendJson(res, 200, { dataUrl, planet: planetId });
   } catch (err) {
-    console.warn('[qokah] /api/generate-avatar using default avatar', err);
+    console.warn('[qokah] /api/generate-avatar using default Pluto avatar', err);
     sendJson(res, 200, {
-      dataUrl: createDemoWarriorAvatar(DEFAULT_AVATAR_FACE, 'earth'),
+      dataUrl: createDemoWarriorAvatar(imageDataUrl || DEFAULT_AVATAR_FACE, 'pluto'),
       fallback: true,
-      error: 'Using default Earth avatar.',
+      error: err instanceof Error ? err.message : 'Using default Pluto avatar.',
     });
   }
 }

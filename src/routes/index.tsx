@@ -24,16 +24,7 @@ export const Route = createFileRoute("/")({
 });
 
 const PLANETS = [
-  { name: "Mercury", color: "#a89078", emoji: "☿" },
-  { name: "Venus", color: "#e8b562", emoji: "♀" },
-  { name: "Earth", color: "#4b9cd3", emoji: "🌍" },
-  { name: "Mars", color: "#c1440e", emoji: "♂" },
-  { name: "Jupiter", color: "#d8a870", emoji: "♃" },
-  { name: "Saturn", color: "#e0c992", emoji: "♄" },
-  { name: "Uranus", color: "#7fdbe0", emoji: "♅" },
-  { name: "Neptune", color: "#3b5ff0", emoji: "♆" },
   { name: "Pluto", color: "#8b5cf6", emoji: "🪐", featured: true },
-  { name: "Sun", color: "#fbbf24", emoji: "☀" },
 ];
 
 type Screen = "intro" | "planet" | "generating" | "play" | "result";
@@ -46,6 +37,35 @@ const STORE = {
   scores: "tokah_scores_v1",
   streak: "tokah_streak_v1",
 };
+
+function svgDataUrl(svg: string) {
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
+function createPlutoFallbackAvatar(imageDataUrl: string) {
+  return svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="space" cx="50%" cy="18%" r="82%"><stop offset="0" stop-color="#a855f7" stop-opacity="0.48"/><stop offset="0.52" stop-color="#09091f"/><stop offset="1" stop-color="#020617"/></radialGradient>
+    <linearGradient id="armor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#38bdf8"/><stop offset="0.38" stop-color="#a855f7"/><stop offset="1" stop-color="#241039"/></linearGradient>
+    <clipPath id="faceClip"><ellipse cx="512" cy="314" rx="142" ry="164"/></clipPath>
+    <filter id="softGlow"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#space)"/>
+  <g opacity="0.9"><circle cx="136" cy="142" r="3" fill="#fff"/><circle cx="812" cy="96" r="2" fill="#fff"/><circle cx="892" cy="296" r="3" fill="#fff"/><circle cx="214" cy="358" r="2" fill="#fff"/><circle cx="724" cy="440" r="2" fill="#fff"/></g>
+  <circle cx="512" cy="378" r="268" fill="none" stroke="#a855f7" stroke-width="18" opacity="0.55" filter="url(#softGlow)"/>
+  <path d="M248 914c34-210 150-328 264-328s230 118 264 328H248Z" fill="url(#armor)" stroke="#38bdf8" stroke-width="10"/>
+  <path d="M366 618 512 782l146-164 54 122-94 192H406l-94-192 54-122Z" fill="url(#armor)" stroke="#a855f7" stroke-width="8"/>
+  <path d="M512 624 452 770h120l-60-146Z" fill="#38bdf8" opacity="0.88" filter="url(#softGlow)"/>
+  <path d="M312 538c-54 36-102 92-136 166l102 18 88-96-54-88Zm400 0c54 36 102 92 136 166l-102 18-88-96 54-88Z" fill="#241039" stroke="#a855f7" stroke-width="8"/>
+  <path d="M360 234c18-122 286-122 304 0l-42 54c-34-70-186-70-220 0l-42-54Z" fill="url(#armor)" stroke="#38bdf8" stroke-width="8"/>
+  <image href="${imageDataUrl}" x="332" y="122" width="360" height="360" preserveAspectRatio="xMidYMid slice" clip-path="url(#faceClip)"/>
+  <ellipse cx="512" cy="314" rx="144" ry="166" fill="none" stroke="#38bdf8" stroke-width="10"/>
+  <path d="M362 438c48 72 252 72 300 0l-40 120H402l-40-120Z" fill="url(#armor)" stroke="#a855f7" stroke-width="8"/>
+  <path d="M210 846h604" stroke="#38bdf8" stroke-width="12" opacity="0.75"/>
+  <text x="512" y="956" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="900" fill="#38bdf8" letter-spacing="4">PLUTO WARRIOR</text>
+</svg>`);
+}
 
 type Streak = { count: number; lastPlayed: string; best: number };
 
@@ -81,7 +101,7 @@ function TokahApp() {
       const p = localStorage.getItem(STORE.planet);
       if (a) setAvatar(a);
       if (s) setSelfie(s);
-      if (p) setPlanet(p);
+      if (p === "Pluto") setPlanet(p);
       const saved = localStorage.getItem(STORE.power);
       if (saved) {
         const parsed = JSON.parse(saved) as { power: string; date: string };
@@ -112,7 +132,10 @@ function TokahApp() {
     setError(null);
     try {
       const r = await generateAvatar({ data: { imageDataUrl: selfie, planet } });
-      const dataUrl = r.ok ? `data:image/png;base64,${r.imageBase64}` : selfie;
+      const dataUrl = r.ok ? `data:image/png;base64,${r.imageBase64}` : createPlutoFallbackAvatar(selfie);
+      if (!r.ok) {
+        setError(r.reason);
+      }
       setAvatar(dataUrl);
       try {
         localStorage.setItem(STORE.avatar, dataUrl);
@@ -120,13 +143,14 @@ function TokahApp() {
       } catch { /* quota */ }
       setScreen("play");
     } catch (e) {
-      // Network / unexpected failure — still fall back to selfie so the game is playable
-      setAvatar(selfie);
+      const dataUrl = createPlutoFallbackAvatar(selfie);
+      setAvatar(dataUrl);
       try {
-        localStorage.setItem(STORE.avatar, selfie);
-        localStorage.setItem(STORE.planet, planet);
+        localStorage.setItem(STORE.avatar, dataUrl);
+        localStorage.setItem(STORE.planet, "Pluto");
       } catch { /* quota */ }
-      console.warn("Avatar generation failed, using selfie:", (e as Error).message);
+      console.warn("Avatar generation failed, using Pluto fallback:", (e as Error).message);
+      setError("AI credits were unavailable, so a Pluto warrior avatar was created locally.");
       setScreen("play");
     }
   }
@@ -292,8 +316,8 @@ function PlanetScreen({
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Choose your planet</h3>
-        <div className="grid grid-cols-5 gap-2">
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Pluto avatar</h3>
+        <div className="grid grid-cols-1 gap-2">
           {PLANETS.map((p) => (
             <button
               key={p.name}
@@ -309,7 +333,7 @@ function PlanetScreen({
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-400">Pluto is today's active battle world.</p>
+        <p className="mt-3 text-xs text-slate-400">Only one avatar will be generated: Pluto warrior.</p>
         <button
           onClick={onGenerate}
           disabled={!selfie}

@@ -2,33 +2,24 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameResult } from './tokah-game';
 
 const PLANETS = [
-  { name: 'Mercury', color: '#a89078', emoji: '☿' },
-  { name: 'Venus', color: '#e8b562', emoji: '♀' },
-  { name: 'Earth', color: '#4b9cd3', emoji: '🌍' },
-  { name: 'Mars', color: '#c1440e', emoji: '♂' },
-  { name: 'Jupiter', color: '#d8a870', emoji: '♃' },
-  { name: 'Saturn', color: '#e0c992', emoji: '♄' },
-  { name: 'Uranus', color: '#7fdbe0', emoji: '♅' },
-  { name: 'Neptune', color: '#3b5ff0', emoji: '♆' },
   { name: 'Pluto', color: '#8b5cf6', emoji: '🪐', featured: true },
-  { name: 'Sun', color: '#fbbf24', emoji: '☀' },
 ];
 
 const DEFAULT_AVATAR = `data:image/svg+xml;base64,${btoa(`
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <radialGradient id="space" cx="50%" cy="20%" r="80%"><stop offset="0" stop-color="#38bdf8" stop-opacity="0.45"/><stop offset="0.5" stop-color="#031525"/><stop offset="1" stop-color="#020617"/></radialGradient>
-    <linearGradient id="armor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#86efac"/><stop offset="0.38" stop-color="#38bdf8"/><stop offset="1" stop-color="#052e2b"/></linearGradient>
+    <radialGradient id="space" cx="50%" cy="20%" r="80%"><stop offset="0" stop-color="#a855f7" stop-opacity="0.45"/><stop offset="0.5" stop-color="#09091f"/><stop offset="1" stop-color="#020617"/></radialGradient>
+    <linearGradient id="armor" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#38bdf8"/><stop offset="0.38" stop-color="#a855f7"/><stop offset="1" stop-color="#241039"/></linearGradient>
     <filter id="softGlow"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
   <rect width="1024" height="1024" fill="url(#space)"/>
-  <circle cx="512" cy="378" r="268" fill="none" stroke="#38bdf8" stroke-width="18" opacity="0.55" filter="url(#softGlow)"/>
+  <circle cx="512" cy="378" r="268" fill="none" stroke="#a855f7" stroke-width="18" opacity="0.55" filter="url(#softGlow)"/>
   <circle cx="512" cy="284" r="150" fill="#f1c8a0"/><path d="M360 276c18-118 124-174 238-126 64 28 94 88 72 156-62-54-146-52-214-24-34 14-66 14-96-6Z" fill="#172554"/>
   <circle cx="462" cy="302" r="14" fill="#0f172a"/><circle cx="562" cy="302" r="14" fill="#0f172a"/><path d="M470 384c28 24 58 24 86 0" fill="none" stroke="#7f1d1d" stroke-width="16" stroke-linecap="round"/>
-  <path d="M248 914c34-210 150-328 264-328s230 118 264 328H248Z" fill="url(#armor)" stroke="#86efac" stroke-width="10"/>
-  <path d="M366 618 512 782l146-164 54 122-94 192H406l-94-192 54-122Z" fill="url(#armor)" stroke="#38bdf8" stroke-width="8"/>
-  <path d="M512 624 452 770h120l-60-146Z" fill="#86efac" opacity="0.88" filter="url(#softGlow)"/>
-  <path d="M210 846h604" stroke="#86efac" stroke-width="12" opacity="0.75"/><text x="512" y="956" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="900" fill="#86efac" letter-spacing="4">EARTH WARRIOR</text>
+  <path d="M248 914c34-210 150-328 264-328s230 118 264 328H248Z" fill="url(#armor)" stroke="#38bdf8" stroke-width="10"/>
+  <path d="M366 618 512 782l146-164 54 122-94 192H406l-94-192 54-122Z" fill="url(#armor)" stroke="#a855f7" stroke-width="8"/>
+  <path d="M512 624 452 770h120l-60-146Z" fill="#38bdf8" opacity="0.88" filter="url(#softGlow)"/>
+  <path d="M210 846h604" stroke="#38bdf8" stroke-width="12" opacity="0.75"/><text x="512" y="956" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="900" fill="#38bdf8" letter-spacing="4">PLUTO WARRIOR</text>
 </svg>`)}`;
 
 type Screen = 'intro' | 'planet' | 'generating' | 'play' | 'result';
@@ -58,7 +49,7 @@ function loadStreak(): Streak {
 export default function App() {
   const [screen, setScreen] = useState<Screen>('intro');
   const [selfie, setSelfie] = useState<string | null>(null);
-  const [planet, setPlanet] = useState<string>('Earth');
+  const [planet, setPlanet] = useState<string>('Pluto');
   const [avatar, setAvatar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedPower, setSavedPower] = useState<string | null>(null);
@@ -74,7 +65,7 @@ export default function App() {
       const p = localStorage.getItem(STORE.planet);
       if (a) setAvatar(a);
       if (s) setSelfie(s);
-      if (p) setPlanet(p);
+      if (p === 'Pluto') setPlanet(p);
       const saved = localStorage.getItem(STORE.power);
       if (saved) {
         const parsed = JSON.parse(saved) as { power: string; date: string };
@@ -112,8 +103,9 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageDataUrl: selfie, planet }),
       });
-      const json = await res.json() as { dataUrl?: string; error?: string };
+      const json = await res.json() as { dataUrl?: string; error?: string; fallback?: boolean };
       const dataUrl = json.dataUrl ?? DEFAULT_AVATAR;
+      if (json.error) setError(json.error);
       setAvatar(dataUrl);
       try {
         localStorage.setItem(STORE.avatar, dataUrl);
@@ -124,7 +116,7 @@ export default function App() {
       setAvatar(DEFAULT_AVATAR);
       try {
         localStorage.setItem(STORE.avatar, DEFAULT_AVATAR);
-        localStorage.setItem(STORE.planet, 'Earth');
+        localStorage.setItem(STORE.planet, 'Pluto');
       } catch {}
       console.warn('Avatar gen failed:', (e as Error).message);
       setScreen('play');
@@ -132,12 +124,12 @@ export default function App() {
   }
 
   function useDefaultAvatar() {
-    setPlanet('Earth');
+    setPlanet('Pluto');
     setAvatar(DEFAULT_AVATAR);
     setSelfie(null);
     try {
       localStorage.setItem(STORE.avatar, DEFAULT_AVATAR);
-      localStorage.setItem(STORE.planet, 'Earth');
+      localStorage.setItem(STORE.planet, 'Pluto');
       localStorage.removeItem(STORE.selfie);
     } catch {}
     setScreen('play');
@@ -286,7 +278,7 @@ function PlanetScreen({
       </div>
 
       <div className="card">
-        <h3 className="step-title">2. Choose your planet</h3>
+        <h3 className="step-title">2. Pluto avatar</h3>
         <div className="planet-grid">
           {PLANETS.map((p) => (
             <button
@@ -301,16 +293,16 @@ function PlanetScreen({
             </button>
           ))}
         </div>
-        <p style={{ marginTop: 12, fontSize: 12, color: '#94a3b8' }}>Pluto is today's active battle world.</p>
+        <p style={{ marginTop: 12, fontSize: 12, color: '#94a3b8' }}>Only one avatar will be generated: Pluto warrior.</p>
         <button
           onClick={onGenerate}
           className="btn-primary block"
           style={{ marginTop: 16 }}
         >
-          {selfie ? `Forge my ${planet} avatar` : 'Use default Earth avatar'}
+          {selfie ? 'Forge my Pluto avatar' : 'Use default Pluto avatar'}
         </button>
         <button onClick={onDefaultAvatar} className="btn-ghost block" style={{ marginTop: 10 }}>
-          Select default Earth avatar
+          Select default Pluto avatar
         </button>
         {error && <p className="err-msg">{error}</p>}
       </div>
