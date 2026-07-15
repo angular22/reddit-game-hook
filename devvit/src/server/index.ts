@@ -173,16 +173,17 @@ async function handleProfile(_req: IncomingMessage, res: ServerResponse) {
 
 // Lovable AI avatar generation: one Pluto avatar only.
 async function handleGenerateAvatar(req: IncomingMessage, res: ServerResponse) {
+  let imageDataUrl = '';
   try {
     const body = (await readJsonBody(req)) as { imageDataUrl?: string; planet?: string };
-    const imageDataUrl = String(body.imageDataUrl ?? '');
+    imageDataUrl = String(body.imageDataUrl ?? '');
     const planetId = normalizePlanet(body.planet);
     const dataUrl = await createLovablePlutoAvatar(imageDataUrl);
     sendJson(res, 200, { dataUrl, planet: planetId });
   } catch (err) {
     console.warn('[qokah] /api/generate-avatar using default Pluto avatar', err);
     sendJson(res, 200, {
-      dataUrl: createDemoWarriorAvatar(DEFAULT_AVATAR_FACE, 'pluto'),
+      dataUrl: createDemoWarriorAvatar(imageDataUrl || DEFAULT_AVATAR_FACE, 'pluto'),
       fallback: true,
       error: err instanceof Error ? err.message : 'Using default Pluto avatar.',
     });
