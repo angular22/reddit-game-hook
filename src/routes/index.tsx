@@ -344,8 +344,8 @@ function PlanetScreen({
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Pluto avatar</h3>
-        <div className="grid grid-cols-1 gap-2">
+        <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-300">2. Pick your planet</h3>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {PLANETS.map((p) => (
             <button
               key={p.name}
@@ -357,11 +357,11 @@ function PlanetScreen({
             >
               <span className="text-xl" style={{ color: p.color }}>{p.emoji}</span>
               <span className="mt-0.5">{p.name}</span>
-              {p.featured && <span className="absolute -right-1 -top-1 rounded-full bg-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold">HOT</span>}
+              {p.featured && <span className="absolute -right-1 -top-1 rounded-full bg-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold">DEFAULT</span>}
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-400">Only one avatar will be generated: Pluto warrior.</p>
+        <p className="mt-3 text-xs text-slate-400">Gemini generates a custom warrior for the planet you pick. If Gemini fails, a local {planet} warrior is used.</p>
         <button
           onClick={onGenerate}
           disabled={!selfie}
