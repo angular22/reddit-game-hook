@@ -31,7 +31,7 @@ Built with [Phaser 3](https://phaser.io/) for the boss fight, [TanStack Start](h
 
 - **Game engine**: Phaser 3 (arcade physics, boss AI, particle FX)
 - **Web shell**: TanStack Start + React 19 + Tailwind v4
-- **AI avatar**: Lovable AI Gateway (default) or Google Gemini 3.1 Flash Image (selfie-to-warrior with face-preservation prompt)
+- **AI avatar**: Lovable AI Gateway, powered by Google Gemini 3.1 Flash Image (selfie-to-warrior with face-preservation prompt)
 - **Backend**: Devvit Redis (leaderboards, streaks) + Devvit posts (user-generated warrior cards)
 - **Selfie capture**: `navigator.mediaDevices.getUserMedia({ facingMode: "user" })`
 

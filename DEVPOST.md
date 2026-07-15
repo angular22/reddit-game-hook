@@ -32,7 +32,7 @@ Plus: per-planet leaderboards in Devvit Redis, daily streaks, and a "Share your 
 
 - **Phaser 3** for the action scene (arcade physics, tweens, particle FX, boss AI).
 - **TanStack Start + React 19** for the web shell and screen flow.
-- **Lovable AI Gateway** for the selfie-to-warrior transformation, with a face-preservation prompt that treats the face as a photo-composite onto a stylized body. The project also supports **Google Gemini 3.1 Flash Image** as an alternative provider.
+- **Lovable AI Gateway** (using **Google Gemini 3.1 Flash Image**) for the selfie-to-warrior transformation, with a face-preservation prompt that treats the face as a photo-composite onto a stylized body.
 - **`navigator.mediaDevices.getUserMedia`** for in-browser front-camera capture — no file picker needed.
 - **Devvit Web** to wrap the TanStack app as a Reddit post.
 - **Devvit Redis** for leaderboards, streaks, and per-user unlocked-power storage.
