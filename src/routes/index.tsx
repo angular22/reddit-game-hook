@@ -160,7 +160,7 @@ function TokahApp() {
     setError(null);
     try {
       const r = await generateAvatar({ data: { imageDataUrl: selfie, planet } });
-      const dataUrl = r.ok ? `data:image/png;base64,${r.imageBase64}` : createPlutoFallbackAvatar(selfie);
+      const dataUrl = r.ok ? `data:image/png;base64,${r.imageBase64}` : createFallbackAvatar(selfie, planet);
       if (!r.ok) {
         setError(r.reason);
       }
@@ -171,15 +171,16 @@ function TokahApp() {
       } catch { /* quota */ }
       setScreen("play");
     } catch (e) {
-      const dataUrl = createPlutoFallbackAvatar(selfie);
+      const dataUrl = createFallbackAvatar(selfie, planet);
       setAvatar(dataUrl);
       try {
         localStorage.setItem(STORE.avatar, dataUrl);
-        localStorage.setItem(STORE.planet, "Pluto");
+        localStorage.setItem(STORE.planet, planet);
       } catch { /* quota */ }
-      console.warn("Avatar generation failed, using Pluto fallback:", (e as Error).message);
-      setError("AI credits were unavailable, so a Pluto warrior avatar was created locally.");
+      console.warn("Avatar generation failed, using local fallback:", (e as Error).message);
+      setError(`Gemini call failed — used a local ${planet} warrior avatar instead.`);
       setScreen("play");
+    }
     }
   }
 
