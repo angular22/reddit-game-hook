@@ -23,8 +23,19 @@ export const Route = createFileRoute("/")({
   component: TokahApp,
 });
 
-const PLANETS = [
-  { name: "Pluto", color: "#8b5cf6", emoji: "🪐", featured: true },
+const PLANETS: { name: string; color: string; accent: string; emoji: string; featured?: boolean }[] = [
+  { name: "Earth",   color: "#38bdf8", accent: "#86efac", emoji: "🌍", featured: true },
+  { name: "Pluto",   color: "#a855f7", accent: "#38bdf8", emoji: "🪐" },
+  { name: "Mars",    color: "#f97316", accent: "#dc2626", emoji: "🔴" },
+  { name: "Europa",  color: "#22d3ee", accent: "#fbbf24", emoji: "🧊" },
+  { name: "Kepler",  color: "#22c55e", accent: "#ec4899", emoji: "🌿" },
+  { name: "Mercury", color: "#f59e0b", accent: "#fef3c7", emoji: "☄️" },
+  { name: "Venus",   color: "#fbbf24", accent: "#fb7185", emoji: "🌋" },
+  { name: "Jupiter", color: "#fb923c", accent: "#fde68a", emoji: "🪐" },
+  { name: "Saturn",  color: "#fde68a", accent: "#c4b5fd", emoji: "💫" },
+  { name: "Uranus",  color: "#67e8f9", accent: "#d9f99d", emoji: "🌐" },
+  { name: "Neptune", color: "#60a5fa", accent: "#a78bfa", emoji: "🌊" },
+  { name: "Sun",     color: "#facc15", accent: "#fb7185", emoji: "☀️" },
 ];
 
 type Screen = "intro" | "planet" | "generating" | "play" | "result";
