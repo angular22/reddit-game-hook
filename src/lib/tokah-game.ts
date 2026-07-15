@@ -131,13 +131,20 @@ class GameScene extends Phaser.Scene {
     this.player.add(this.playerSprite);
 
     if (this.avatarKey) {
-      if (this.textures.exists(this.avatarKey) && this.textures.get(this.avatarKey).getSourceImage()) {
+      const key = this.avatarKey;
+      if (this.textures.exists(key) && this.textures.get(key).getSourceImage()) {
         attachAvatar();
       } else {
-        this.textures.once("addtexture-" + this.avatarKey, attachAvatar);
-        this.textures.once("onload", attachAvatar);
+        const handler = (addedKey: string) => {
+          if (addedKey === key) {
+            this.textures.off("addtexture", handler);
+            attachAvatar();
+          }
+        };
+        this.textures.on("addtexture", handler);
       }
     }
+
 
 
     // Ring border around avatar
