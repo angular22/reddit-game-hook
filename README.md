@@ -2,7 +2,9 @@
 
 A single-player Reddit game where **you** are the hero. Snap a selfie, pick a planet, and your face becomes a cosmic warrior who fights aliens, collects crystals, and unlocks a **hidden power you can only use tomorrow.**
 
-Built with [Phaser 3](https://phaser.io/) for the boss fight, [TanStack Start](https://tanstack.com/start) for the web shell, and Google Gemini image generation for the AI avatar. Wrapped for Reddit via [Devvit Web](https://developers.reddit.com/docs/web).
+Built with [Phaser 3](https://phaser.io/) for the boss fight, [TanStack Start](https://tanstack.com/start) for the web shell, and AI image generation for the cosmic warrior avatar. Wrapped for Reddit via [Devvit Web](https://developers.reddit.com/docs/web).
+
+> **Reddit demo note:** The live Reddit post uses a **default Earth avatar** so every player can jump straight into the game without waiting on an AI response. Players can still generate a custom warrior when the AI service is available.
 
 ---
 
@@ -10,7 +12,7 @@ Built with [Phaser 3](https://phaser.io/) for the boss fight, [TanStack Start](h
 
 1. **Take a selfie** — front-facing camera opens right in the browser (laptop or mobile). Gallery upload also works.
 2. **Pick a planet** — Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, or the Sun. Each maps to a distinct warrior style (Mars = iron warlord, Uranus = ice mage, Pluto = shadow guardian…).
-3. **Become a warrior** — the AI transforms your selfie into a full-body cosmic hero for that planet.
+3. **Become a warrior** — the AI transforms your selfie into a full-body cosmic hero for that planet. On the Reddit demo you can also **select the default Earth avatar** to play instantly.
 4. **Fight** — arrow keys / WASD to move, space to shoot. Kill drones, collect the crystals they drop.
 5. **Reach 100% power** — your avatar grows, a crown appears, a banner announces the hidden power you unlocked.
 6. **Defeat the boss** — beat the giant alien that spawns to *keep* the power.
@@ -29,7 +31,7 @@ Built with [Phaser 3](https://phaser.io/) for the boss fight, [TanStack Start](h
 
 - **Game engine**: Phaser 3 (arcade physics, boss AI, particle FX)
 - **Web shell**: TanStack Start + React 19 + Tailwind v4
-- **AI avatar**: Google Gemini 3.1 Flash Image (selfie-to-warrior with face-preservation prompt)
+- **AI avatar**: Lovable AI Gateway (default) or Google Gemini 3.1 Flash Image (selfie-to-warrior with face-preservation prompt)
 - **Backend**: Devvit Redis (leaderboards, streaks) + Devvit posts (user-generated warrior cards)
 - **Selfie capture**: `navigator.mediaDevices.getUserMedia({ facingMode: "user" })`
 
